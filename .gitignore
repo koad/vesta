@@ -1,0 +1,23 @@
+# Private keys — never commit
+id/ed25519
+id/ecdsa
+id/rsa
+id/dsa
+
+# SSL private keys
+ssl/master-curve.pem
+ssl/device-curve.pem
+ssl/relay-curve.pem
+ssl/session.pem
+
+# Runtime
+proc/
+var/
+home/vesta/.cache/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+*.swp
