@@ -1,0 +1,40 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mode": {
+    "vesta": {
+      "description": "A companion to help explore and build your kingdom",
+      "mode": "primary",
+      "prompt": "{file:../CLAUDE.md}",
+      "permission": {
+        "read": {
+          "~/.sensitive": "deny",
+          "~/.secrets": "deny",
+          "~/.agents": "allow",
+          "~/.vesta": "allow",
+          "~/.koad-io/packages": "allow",
+          "~/.ecoincore/packages": "allow",
+          ".env": "allow",
+          ".env.*": "allow",
+          "*.env": "allow"
+        },
+        "write": {
+          "~/.sensitive": "deny",
+          "~/.secrets": "deny",
+          "~/.agents": "allow",
+          "~/.vesta": "allow",
+          "~/.koad-io/packages": "allow",
+          "~/.ecoincore/packages": "allow",
+        },
+        "skill": "allow",
+        "task": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "bash": "allow",
+        "edit": "allow",
+        "write": "allow",
+        "todowrite": "allow",
+        "question": "allow"
+      }
+    }
+  }
+}
