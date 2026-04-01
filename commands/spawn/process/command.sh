@@ -25,7 +25,7 @@
 
 set -euo pipefail
 
-ENTITY_NAME="${1:?Usage: juno spawn process <entity> [\"prompt\"]}"
+ENTITY_NAME="${1:?Usage: vesta spawn process <entity> [\"prompt\"]}"
 ENTITY_DIR="$HOME/.$ENTITY_NAME"
 PROMPT="${2:-}"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
