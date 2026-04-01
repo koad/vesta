@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# Juno Spawn Process Command
+# Vesta Spawn Process Command
 # Spawns a team entity in its own gnome-terminal with Claude Code
 # Triggers OBS streaming via WebSocket API on the broadcast machine
 #
-# Usage: juno spawn process <entity> ["prompt to pass"]
+# Usage: vesta spawn process <entity> ["prompt to pass"]
 #
 # Flow:
 #   1. Validate entity exists on disk
