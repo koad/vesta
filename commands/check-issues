@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# check-issues — fetch open GitHub issues for all monitored entity repos
+# Used by SessionStart hook and can be run manually
+
+REPOS=("koad/vesta" "koad/juno" "koad/vulcan")
+output="=== GitHub Issues ==="
+
+for repo in "${REPOS[@]}"; do
+  issues=$(gh issue list --repo "$repo" 2>/dev/null | while IFS=$'\t' read -r num state title rest; do
+    echo "  ${repo}#${num} ${title}"
+  done)
+  output="${output}"$'\n'"${repo}:"
+  output="${output}"$'\n'"${issues:-  (none)}"
+done
+
+jq -n --arg msg "$output" '{"systemMessage": $msg}'
