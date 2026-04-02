@@ -2,7 +2,7 @@
 id: spec-onboarding-package
 title: "koad:io Onboarding Package"
 type: project
-status: active
+status: review
 priority: 1
 assigned_by: koad
 issue: "koad/vesta#1"

@@ -4,7 +4,7 @@ Commands are how entities do things. This document covers how commands are disco
 
 ---
 
-## Discovery Order
+## Discovery Order (Two Rules)
 
 When you invoke a command, the system searches in this order (highest to lowest priority):
 
@@ -14,9 +14,13 @@ When you invoke a command, the system searches in this order (highest to lowest 
 3. Global commands     ~/.koad-io/commands/
 ```
 
-The first match wins. Entity commands shadow global commands of the same name. This lets entities override or extend global behavior without modifying the framework.
+**Rule 1 — Priority**: Entity > Local > Global — higher priority shadows lower priority.
 
-**Example:** If `~/.vesta/commands/commit/` and `~/.koad-io/commands/commit/` both exist, `vesta commit` runs the entity version.
+**Rule 2 — Depth**: Within a priority level, deepest directory match wins.
+
+So `juno commit self` resolves by searching entity commands first (highest priority), finding `commands/commit/self/` at depth 2, and winning immediately — even if global also has a `commit` command.
+
+**Example:** If `~/.vesta/commands/commit/` and `~/.koad-io/commands/commit/` both exist, `vesta commit` runs the entity version because entity has priority. Within entity commands, `commands/commit/self/` beats `commands/commit/` because it's deeper.
 
 ---
 
@@ -117,8 +121,10 @@ These live at `~/.koad-io/commands/` and are available to all entities:
 | `commit staged` | AI-assisted git commit |
 | `build [local]` | Build a Meteor application |
 | `start [local]` | Start an application |
-| `shell [--terminal]` | Open Meteor shell or bash |
-| `test` | Run tests |
+| `shell [mongo]` | Open Meteor shell, MongoDB shell, or bash |
+| `test [one]` | Run all tests or a specific test file |
+| `install starship` | Install Starship prompt |
+| `assert datadir` | Assert that data directory exists |
 
 ---
 
@@ -151,7 +157,25 @@ vesta commit self              # commit is the command, self is an argument
 alice install nodejs           # install is the command, nodejs is an argument
 ```
 
-Within `command.sh`, `$1` is the subcommand. Use a `case` statement to route:
+There are two valid patterns for implementing subcommands:
+
+### Pattern 1: Directory-Based (Deepest Match)
+
+```
+~/.juno/commands/commit/self/command.sh
+```
+
+The dispatcher resolves via deepest directory match. Clean, no case logic needed. Each subcommand is its own directory with its own `command.sh`.
+
+**Use when:** Subcommands are distinct, have minimal shared setup, or you want maximum clarity in the filesystem.
+
+### Pattern 2: Argument-Based (Case Statement)
+
+```
+~/.koad-io/commands/commit/command.sh
+```
+
+One `command.sh` handles `$1` via a `case` statement:
 
 ```bash
 #!/usr/bin/env bash
@@ -167,6 +191,10 @@ case "${1:-}" in
     ;;
 esac
 ```
+
+**Use when:** Subcommands share significant setup code, or you want centralized logic in one file.
+
+Both patterns are valid and in use. Juno uses both: directory-based for `commit self`, argument-based (if any) in global commands.
 
 ---
 
