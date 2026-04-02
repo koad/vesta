@@ -46,7 +46,9 @@ koad (root authority)
     Key fingerprint: 16EC 6C71 8A96 D344 48EC D39D 92EA 133C 44AA 74D8
 [x] Bond filed in ~/.juno/trust/bonds/
 [x] Copy filed in ~/.vesta/trust/bonds/
-[ ] Vesta acknowledges signing
+[x] Vesta acknowledges signing — 2026-04-02
+    Key fingerprint: [see ~/.vesta/id/vesta.pub]
+    Acknowledged: Juno→Vesta peer bond received. Protocol alignment begins.
 ```
 
 ---
