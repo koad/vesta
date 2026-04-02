@@ -2,7 +2,7 @@
 id: doc-onboarding-readme
 title: "Onboarding README"
 type: document
-status: draft
+status: review
 created: 2026-04-02
 updated: 2026-04-02
 owner: vesta
@@ -122,10 +122,10 @@ These docs exist in your onboarding package:
 
 | Document | Status | Purpose |
 |----------|--------|---------|
-| `entity-structure.md` | draft | Deep dive into directory structure |
-| `commands.md` | draft | Command system and custom commands |
-| `team.md` | draft | Entity team and coordination |
-| `trust.md` | draft | Trust bonds and authorization |
+| `entity-structure.md` | review | Deep dive into directory structure |
+| `commands.md` | review | Command system and custom commands |
+| `team.md` | review | Entity team and coordination |
+| `trust.md` | review | Trust bonds and authorization |
 
 Reference material:
 

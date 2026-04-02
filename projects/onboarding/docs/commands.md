@@ -4,17 +4,17 @@ Commands are how entities do things. This document covers how commands are disco
 
 ---
 
-## Discovery Order (Two Rules)
+## Discovery Order
 
-When you invoke a command, the system searches in this order (highest to lowest priority):
+When you invoke a command, the system searches in this order (lowest to highest priority):
 
 ```
-1. Entity commands     ~/.entityname/commands/
-2. Local commands      ./commands/          (current working directory)
-3. Global commands     ~/.koad-io/commands/
+1. Global commands     ~/.koad-io/commands/      (lowest priority)
+2. Entity commands     ~/.entityname/commands/   (middle)
+3. Local commands      ./commands/               (highest priority)
 ```
 
-**Rule 1 — Priority**: Entity > Local > Global — higher priority shadows lower priority.
+**Rule 1 — Priority**: Local > Entity > Global — higher priority shadows lower priority.
 
 **Rule 2 — Depth**: Within a priority level, deepest directory match wins.
 
