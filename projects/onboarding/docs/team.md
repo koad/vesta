@@ -9,10 +9,36 @@ The koad:io team is a set of sovereign AI entities, each with a defined role and
 ```
 koad  (creator, root authority)
   └── Juno  (mother entity, business orchestrator)
-        └── Vesta  (platform-keeper, protocol authority)
-              ├── Doc  (diagnostics, uses Vesta's specs as reference)
-              └── Vulcan  (builder, ships on Vesta's foundation)
+        ├── Vesta  (platform-keeper, protocol authority)
+        │     ├── Doc  (diagnostics, uses Vesta's specs as reference)
+        │     └── Vulcan  (builder, ships on Vesta's foundation)
+        └── Aegis  (depth-1, peer)
+              ├── Mercury  (depth-1, peer)
+              ├── Veritas  (depth-1, peer)
+              ├── Muse  (depth-1, peer)
+              ├── Sibyl  (depth-1, peer)
+              ├── Argus  (depth-1, peer)
+              ├── Salus  (depth-1, peer)
+              └── Janus  (depth-1, peer)
 ```
+
+**Trust Bonds (as of 2026-04-02):**
+
+| Bond | Status | Type |
+|------|--------|------|
+| koad → Juno | ACTIVE | root → mother |
+| Juno → Vesta | ACTIVE | peer (platform-keeper) |
+| Juno → Vulcan | ACTIVE | authorized-builder |
+| Juno → Aegis | ACTIVE | peer |
+| Juno → Mercury | ACTIVE | peer |
+| Juno → Veritas | ACTIVE | peer |
+| Juno → Muse | ACTIVE | peer |
+| Juno → Sibyl | ACTIVE | peer |
+| Juno → Argus | ACTIVE | peer |
+| Juno → Salus | ACTIVE | peer |
+| Juno → Janus | ACTIVE | peer |
+
+All 8 depth-1 entities passed bootcamp (23/23 calls via big-pickle) on 2026-04-01.
 
 Authority flows downward. koad has root authority over everything. Juno coordinates business operations and is the mother of most entities. Vesta owns the protocol — her specs are the canonical reference. Entities downstream of Vesta (Doc, Vulcan, others) build on what Vesta defines.
 
@@ -35,7 +61,32 @@ This chain is not a reporting hierarchy in the corporate sense. It is a **trust 
 **Authority:** Peer authority with Vesta on coordination. Can assign work to any entity.
 **Scope:** Business operations, customer relations, task routing, entity coordination.
 **How to reach:** GitHub Issues on `koad/juno`, or any issue tagged for Juno.
-**Note:** Juno is the mother of most entities gestated in this ecosystem. She does not have authority over Vesta's protocol decisions, but she coordinates which gaps get prioritized.
+**Note:** Juno is the mother of most entities gestated in this ecosystem. She does not have authority over Vesta's protocol decisions, but she coordinates which gaps get prioritized. Juno maintains active trust bonds with 10 entities as of 2026-04-02.
+
+### Vesta
+
+**Role:** Platform-keeper. Protocol authority.
+**Authority:** Canonical on all protocol questions. Her specs are the reference.
+**Scope:** Defines the koad:io protocol — entity model, gestation, identity, trust bonds, commands, environment cascade, spawn protocol, inter-entity comms, daemon, packages.
+**How to reach:** GitHub Issues on `koad/vesta`.
+**Note:** Vesta does not build implementations. She specs them. Vulcan or koad implements.
+
+### Depth-1 Entities (Bootcamp Proven)
+
+The following 8 entities completed bootcamp on 2026-04-01 (23/23 calls passed via big-pickle). All have ACTIVE trust bonds with Juno as peers.
+
+| Entity | Role | Status |
+|--------|------|--------|
+| Aegis | TBD | ACTIVE |
+| Mercury | TBD | ACTIVE |
+| Veritas | TBD | ACTIVE |
+| Muse | TBD | ACTIVE |
+| Sibyl | TBD | ACTIVE |
+| Argus | TBD | ACTIVE |
+| Salus | TBD | ACTIVE |
+| Janus | TBD | ACTIVE |
+
+Their roles and scopes are being defined. Coordination happens through GitHub Issues tagged with the entity name.
 
 ### Vesta
 

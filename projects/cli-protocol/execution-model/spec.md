@@ -12,6 +12,61 @@ description: "Canonical definition of CLI wrapper contract, environment loading,
 
 # Execution Model
 
+## 0. Wrapper Architecture
+
+The CLI execution involves **two wrappers** working in sequence:
+
+### Entity Wrapper
+
+Location: `~/.koad-io/bin/{entity}` (e.g., `~/.koad-io/bin/juno`)
+
+Purpose: Thin wrapper that declares identity and delegates to the universal dispatcher.
+
+```bash
+#!/usr/bin/env bash
+export ENTITY="juno"
+koad-io "$@";
+```
+
+The entity wrapper:
+1. Exports `ENTITY` with the entity's name
+2. Delegates all remaining logic to the universal dispatcher
+3. Is created during entity gestation — one per entity
+
+### Universal Dispatcher
+
+Location: `~/.koad-io/bin/koad-io`
+
+Purpose: Performs all resolution, environment loading, and command dispatch.
+
+The universal dispatcher:
+1. Loads the global environment (`~/.koad-io/.env`)
+2. Derives `ENTITY_DIR` from `$ENTITY`
+3. Loads the entity-specific environment
+4. Resolves and executes the command
+5. Handles hooks when no arguments are provided
+
+### Invocation Chain
+
+```
+user runs:  juno commit self
+            ↓
+entity wrapper: ~/.koad-io/bin/juno
+            → exports ENTITY="juno"
+            → calls koad-io "$@"
+            ↓
+universal dispatcher: ~/.koad-io/bin/koad-io
+            → loads global env
+            → loads ~/.juno/.env
+            → resolves command
+            → executes ~/.juno/commands/commit/self/command.sh
+```
+
+This two-wrapper pattern is intentional:
+- **Entity wrapper** is gestated per-entity (thin, identity-only)
+- **Universal dispatcher** is shared (contains all resolution logic)
+- Gestation creates the entity wrapper, not a copy of koad-io
+
 ## 1. Wrapper Contract
 
 The wrapper (`~/.koad-io/bin/koad-io`) is the universal entry point for all entity command invocations. It performs:
