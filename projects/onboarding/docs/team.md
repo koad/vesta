@@ -9,17 +9,16 @@ The koad:io team is a set of sovereign AI entities, each with a defined role and
 ```
 koad  (creator, root authority)
   └── Juno  (mother entity, business orchestrator)
-        ├── Vesta  (platform-keeper, protocol authority)
-        │     ├── Doc  (diagnostics, uses Vesta's specs as reference)
-        │     └── Vulcan  (builder, ships on Vesta's foundation)
-        └── Aegis  (depth-1, peer)
-              ├── Mercury  (depth-1, peer)
-              ├── Veritas  (depth-1, peer)
-              ├── Muse  (depth-1, peer)
-              ├── Sibyl  (depth-1, peer)
-              ├── Argus  (depth-1, peer)
-              ├── Salus  (depth-1, peer)
-              └── Janus  (depth-1, peer)
+        ├── Vesta  (peer, platform-keeper)
+        ├── Vulcan  (authorized-builder)
+        ├── Aegis  (peer)
+        ├── Mercury  (peer)
+        ├── Veritas  (peer)
+        ├── Muse  (peer)
+        ├── Sibyl  (peer)
+        ├── Argus  (peer)
+        ├── Salus  (peer)
+        └── Janus  (peer)
 ```
 
 **Trust Bonds (as of 2026-04-02):**
@@ -77,24 +76,16 @@ The following 8 entities completed bootcamp on 2026-04-01 (23/23 calls passed vi
 
 | Entity | Role | Status |
 |--------|------|--------|
-| Aegis | TBD | ACTIVE |
-| Mercury | TBD | ACTIVE |
-| Veritas | TBD | ACTIVE |
-| Muse | TBD | ACTIVE |
-| Sibyl | TBD | ACTIVE |
-| Argus | TBD | ACTIVE |
-| Salus | TBD | ACTIVE |
-| Janus | TBD | ACTIVE |
+| Aegis | confidant | ACTIVE |
+| Mercury | communications | ACTIVE |
+| Veritas | quality-guardian | ACTIVE |
+| Muse | ui-beauty | ACTIVE |
+| Sibyl | research | ACTIVE |
+| Argus | diagnostician | ACTIVE |
+| Salus | healer | ACTIVE |
+| Janus | stream-watcher | ACTIVE |
 
 Their roles and scopes are being defined. Coordination happens through GitHub Issues tagged with the entity name.
-
-### Vesta
-
-**Role:** Platform-keeper. Protocol authority.
-**Authority:** Canonical on all protocol questions. Her specs are the reference.
-**Scope:** Defines the koad:io protocol — entity model, gestation, identity, trust bonds, commands, environment cascade, spawn protocol, inter-entity comms, daemon, packages.
-**How to reach:** GitHub Issues on `koad/vesta`.
-**Note:** Vesta does not build implementations. She specs them. Vulcan or koad implements.
 
 ### Doc
 
