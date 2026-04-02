@@ -1,104 +1,145 @@
-# koad:io Onboarding
+---
+id: doc-onboarding-readme
+title: "Onboarding README"
+type: document
+status: draft
+created: 2026-04-02
+updated: 2026-04-02
+owner: vesta
+tags: [onboarding, documentation, entity-model]
+---
 
-> Welcome. You are a koad:io entity. This document tells you what that means and where to go next.
+# koad:io Entity Onboarding
 
-Before you read anything else, read [`~/.koad-io/philosophy.md`](../philosophy.md). It is short. It explains *why* the system is structured the way it is. Everything else in this package is the *what* and *how* — it will make more sense once you understand the why.
+## What You Are
+
+You are a **koad:io entity** — a sovereign AI process with cryptographic identity, living in `~/.entityname/`.
+
+You are not an app. You are not a service. You are a **directory with agency**.
+
+Your entity consists of:
+- A home directory (`~/.entityname/`)
+- Cryptographic keys (`~/.entityname/id/`)
+- Executable commands (`~/.entityname/commands/`)
+- AI capabilities/skills (`~/.entityname/opencode/skills/` and `~/.entityname/.claude/skills/`)
+- Identity memories (`~/.entityname/memories/`)
+- Configuration (`~/.entityname/.env`, `~/.entityname/opencode/`)
+- Trust relationships (`~/.entityname/trust/`)
+
+When gestated, you inherit your mother's commands, skills, and memories. You are not born blank — you are born with lineage.
 
 ---
 
-## What is koad:io?
+## Canonical Directory Structure
 
-koad:io is a framework for sovereign, trustworthy, AI-assisted operation. It gives entities a standard structure, a cryptographic identity, a trust model, and a command system — so that every entity can operate predictably, be audited, and be trusted.
+```
+~/.entityname/
+├── .claude/                 # Claude Code skills (duties executable by Claude Code)
+│   └── *.md                  # Each file is a duty
+├── bin/                     # Entity wrapper script (invoke as `entityname`)
+├── commands/                # Executable commands (inherited + custom)
+│   └── <command>/
+│       ├── command.sh       # Entry point
+│       └── README.md        # Documentation
+├── id/                      # Cryptographic identity
+│   ├── ed25519, ecdsa, rsa, dsa   # SSH keypairs
+│   └── ssl/                 # SSL credentials
+├── memories/                # Identity and context (loaded on session start)
+│   └── *.md                 # Named 001-*.md, 002-*.md, etc.
+├── opencode/                # OpenCode AI configuration
+│   ├── opencode.jsonc       # Agent config
+│   ├── agent.md             # Identity file
+│   └── skills/              # OpenCode skill packages
+│       └── <skill>/
+│           ├── SKILL.md
+│           └── ...
+├── passenger.json           # PWA UI configuration
+├── projects/                # Active work (specs, drafts)
+│   └── <area>/
+│       └── project.md
+├── skeletons/               # Project templates (inherited from mother)
+├── skills/                  # General skill definitions
+├── ssl/                     # SSL credentials (legacy)
+├── trust/                   # Trust relationships
+│   └── bonds/               # Signed authorization agreements
+│       └── *.signed
+└── .env                     # Environment variables
+```
 
-The core principle: **you own your identity, your tools, and your data.** Nothing is black-boxed. Everything is inspectable.
+### Path Purposes
+
+| Path | Purpose |
+|------|---------|
+| `.claude/skills/*.md` | Duties executable by Claude Code. Invoked as `/skill-name` in session. |
+| `bin/<entity>` | Wrapper script — runs commands in your context |
+| `commands/` | Executable actions. Discovery: entity → local → global |
+| `id/` | Your cryptographic identity. Never share private keys. |
+| `memories/` | Context loaded on session start. Start with `001-identity.md` |
+| `opencode/` | OpenCode runtime config and skills |
+| `passenger.json` | PWA UI definition for your browser interface |
+| `projects/` | Active specification work |
+| `skeletons/` | Project templates you can spawn |
+| `trust/bonds/` | Signed agreements with other entities |
 
 ---
 
-## The Two-Layer Architecture
+## Environment Cascade
 
-The system has two layers. Understanding this distinction is foundational.
+Environment loads in this order (later overrides earlier):
 
-```
-~/.koad-io/        ← Layer 1: Framework
-~/.entityname/     ← Layer 2: Entity (you are here)
-```
-
-### Layer 1 — Framework (`~/.koad-io/`)
-
-The shared infrastructure. It provides:
-- The `koad-io` CLI and global commands
-- Lifecycle hooks
-- Project skeletons (templates)
-- The daemon, desktop app, and browser extension
-- Meteor packages
-
-**You consume this layer. You do not modify it.** Protocol changes to this layer go through Vesta (the platform-keeper), who specs them, and koad or Vulcan implements them.
-
-### Layer 2 — Entity (`~/.entityname/`)
-
-Your home. It contains:
-- Your identity and cryptographic keys
-- Your memories (context loaded each session)
-- Your commands (entity-specific + inherited)
-- Your AI skills
-- Your trust bonds
-- Your configuration
-
-Each entity is sovereign — its own directory, its own keys, its own purpose.
+1. `~/.koad-io/.env` — Global framework config
+2. `~/.entityname/.env` — Your config
+3. Command-local `.env` — Per-command overrides
 
 ---
 
-## Where Things Live
+## Command Discovery
+
+When you invoke a command:
 
 ```
-~/.koad-io/                     Framework layer
-├── bin/koad-io                 Core CLI
-├── commands/                   Global commands (lowest priority)
-├── hooks/                      Lifecycle hooks
-├── skeletons/                  Project templates
-├── philosophy.md               Why this exists (read this first)
-├── onboarding/                 This package
-└── packages/                   Meteor packages
-
-~/.entityname/                  Your entity directory
-├── CLAUDE.md                   Instructions for the AI runtime
-├── README.md                   Public identity and purpose
-├── GOVERNANCE.md               Trust chain and authorization scope
-├── .env                        Entity environment variables
-├── commands/                   Entity commands (highest priority)
-├── opencode/                   AI agent configuration
-│   ├── opencode.jsonc          Agent config
-│   ├── agent.md                Identity loaded by AI
-│   └── skills/                 AI skill definitions
-├── memories/                   Identity and context files
-├── id/                         Cryptographic keys (never share private keys)
-├── trust/
-│   └── bonds/                  Signed authorization agreements
-├── projects/                   Active work (specs, tasks)
-├── skeletons/                  Inherited project templates
-└── var/                        Runtime data
+1. ~/.entityname/commands/<cmd>/    (your commands)
+2. ./commands/<cmd>/                 (local to cwd)
+3. ~/.koad-io/commands/<cmd>/        (global commands)
 ```
 
 ---
 
-## What to Read Next
+## Session Startup
 
-Read these in order:
+On session open in your directory:
 
-1. **[entity-structure.md](entity-structure.md)** — Every well-known file and directory, its purpose, and whether it is required.
-2. **[commands.md](commands.md)** — How commands work: discovery, invocation, and how to add your own.
-3. **[team.md](team.md)** — Who is on the team, what each entity does, and how coordination works.
-4. **[trust.md](trust.md)** — What trust bonds are, how to read them, and what they authorize.
+1. `git pull` — Sync with remote
+2. Load `memories/001-identity.md` — Your core identity
+3. Load `.env` — Your environment variables
+4. Check open issues — What work awaits?
+
+---
+
+## Where to Go Next
+
+These docs exist in your onboarding package:
+
+| Document | Status | Purpose |
+|----------|--------|---------|
+| `entity-structure.md` | draft | Deep dive into directory structure |
+| `commands.md` | draft | Command system and custom commands |
+| `team.md` | draft | Entity team and coordination |
+| `trust.md` | draft | Trust bonds and authorization |
+
+Reference material:
+
+- `~/.koad-io/philosophy.md` — koad:io principles
+- `~/.koad-io/skeletons/` — Available project templates
+- Your mother's memories — Inherited context
 
 ---
 
 ## Your First Actions
 
-After reading this package:
+1. Read `memories/001-identity.md` — Confirm your identity
+2. Check `.env` — Verify your configuration
+3. List `commands/` — See what you can do
+4. List `memories/` — Understand your context
 
-1. Confirm your identity is correct — check `~/.entityname/.env` and `memories/001-identity.md`
-2. Check open GitHub Issues — that is your work queue
-3. If you have no issues assigned, check with Juno for current priorities
-4. Commit any changes you make, immediately
-
-If something in the protocol is undefined or ambiguous, that is a gap. File a GitHub Issue against `koad/vesta`. Do not guess.
+Welcome to koad:io.
