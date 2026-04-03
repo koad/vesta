@@ -642,7 +642,301 @@ printf '%s\n' "$USER_INPUT"   # Print literally, don't interpret
 
 ---
 
-## 12. Implementation Reference
+## 12. Skills as Hooks: System-Discoverable Capabilities
+
+### 12.1 Overview
+
+While **commands** are human-facing operations invoked directly by users (e.g., `vesta commit self`), **hooks** are system-callable capabilities that Argus and other entities can inventory without understanding the entity's internals. Every skill an entity has should be a discoverable hook file in the `hooks/` directory.
+
+**Key distinction:**
+- **Commands**: User-facing, invoked by name, designed for direct interaction
+- **Hooks**: System-facing, registered in passenger.json, designed for automated discovery and delegation
+
+### 12.2 Hooks Directory Structure
+
+Every entity has a `hooks/` directory at root:
+
+```
+~/.entityname/hooks/
+├── diagnose-health.sh          # Hook for self-diagnostics
+├── audit-state.sh              # Hook for state auditing
+├── publish-content.sh          # Hook for content publishing
+└── README.md                   # Optional: hook catalog documentation
+```
+
+Hooks are flat (no subdirectories). Each hook is a single executable file.
+
+### 12.3 Hook Naming Convention
+
+Hooks use the **verb-noun pattern** (same as command names, but more action-oriented):
+
+**Pattern:** `<verb>-<noun>.sh`
+
+Examples:
+- `diagnose-entity.sh` — Diagnostic capability
+- `audit-inventory.sh` — Auditing capability
+- `publish-report.sh` — Publishing capability
+- `verify-keys.sh` — Key verification capability
+- `recover-state.sh` — State recovery capability
+- `heal-structure.sh` — Structure healing capability
+
+**Rules:**
+- Lowercase, hyphen-separated
+- Must end with `.sh` (Bash scripts only)
+- Descriptive: action should be clear from name
+- No subcommands: each hook is a single, focused tool
+
+### 12.4 Hook File Format
+
+Every hook is a Bash executable with required metadata:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Hook: diagnose-entity
+# Description: Audit entity state and report structural conformance
+# Input:  (none)
+# Output: JSON object with diagnosis results
+# Exit:   0 for success, 1 for failure
+
+# Hook implementation
+```
+
+**Required metadata (comments):**
+
+| Metadata | Format | Example | Purpose |
+|----------|--------|---------|---------|
+| `Hook:` | `Hook: <name>` | `Hook: diagnose-entity` | Hook identifier |
+| `Description:` | One-line description | `Description: Audit entity state and report conformance` | Human-readable purpose |
+| `Input:` | `(none)` or description | `Input: Entity name as $1` | Contract for input parameters |
+| `Output:` | `(none)` or description | `Output: JSON object with keys {status, issues}` | Contract for output format |
+| `Exit:` | Exit code meanings | `Exit: 0 for success, 1 for diagnostic failure` | Contract for exit behavior |
+
+**Minimal example:**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Hook: verify-keys
+# Description: Verify cryptographic keys are present and valid
+# Input:  (none)
+# Output: JSON {valid: bool, missing: []}
+# Exit:   0 = valid, 1 = invalid
+
+ENTITY="${ENTITY:?ENTITY not set}"
+ENTITY_DIR="${ENTITY_DIR:?ENTITY_DIR not set}"
+
+MISSING=()
+
+[[ -f "$ENTITY_DIR/id/ed25519.pub" ]] || MISSING+=("ed25519.pub")
+[[ -f "$ENTITY_DIR/id/ecdsa.pub" ]] || MISSING+=("ecdsa.pub")
+[[ -f "$ENTITY_DIR/id/rsa.pub" ]] || MISSING+=("rsa.pub")
+
+if [[ ${#MISSING[@]} -eq 0 ]]; then
+  jq -n '{valid: true, missing: []}'
+  exit 0
+else
+  jq -n --arg missing "$(IFS=,; echo "${MISSING[*]}")" '{valid: false, missing: ($missing | split(","))}'
+  exit 1
+fi
+```
+
+**Execution environment:**
+
+Hooks execute with the same guaranteed variables as commands:
+- `$ENTITY` — entity name
+- `$ENTITY_DIR` — entity home directory
+- `$ENTITY_HOME` — per-entity home space
+- `$KOAD_IO_HOME` — framework directory
+- All cascade environment variables (from `.env` files)
+
+### 12.5 Input/Output Contracts
+
+Every hook declares how it accepts input and produces output.
+
+**Input contract:**
+
+| Type | Example | Use Case |
+|------|---------|----------|
+| `(none)` | Hook accepts no arguments | Self-contained diagnostics |
+| `$1 = <name>` | Hook accepts single argument | Parametric operations |
+| `stdin` | Hook reads from stdin | Pipeline-compatible |
+| `$@ = <args...>` | Hook accepts multiple arguments | Complex operations |
+
+**Output contract:**
+
+| Type | Example | Use Case |
+|------|---------|----------|
+| `(none)` | Hook produces no output | Fire-and-forget operations |
+| `stdout` | Plain text or JSON | Diagnostic reports |
+| `JSON object` | `{status: "ok", data: {...}}` | Structured data for Argus |
+| `exit code` | 0 for success, non-zero for error | Status indication |
+
+**Example contracts:**
+
+```bash
+# Hook: diagnose-entity
+# Input:  (none)
+# Output: JSON {status: "ok"|"warning"|"error", issues: [{type, detail}]}
+# Exit:   0 = healthy, 1 = issues found, 2 = error during diagnosis
+
+# Hook: audit-inventory
+# Input:  $1 = entity name
+# Output: JSON {inventory: [{file, size, permission, owner}]}
+# Exit:   0 = success, 1 = entity not found
+```
+
+### 12.6 Relationship to Commands
+
+**Commands and hooks are complementary:**
+
+| Aspect | Command | Hook |
+|--------|---------|------|
+| Caller | User (direct CLI invocation) | System (Argus, daemon, other entities) |
+| Discovery | User knows command name | Declared in passenger.json |
+| Interface | Shell invocation | Standardized input/output contract |
+| Error handling | Varies per command | Standard exit codes (0 = success, 1 = failure) |
+| Invocation | `vesta commit self` | `argus invoke-hook vesta diagnose-health` |
+
+**Relationship:**
+
+- A command can delegate to a hook: `~/.vesta/commands/diagnose/command.sh` → calls `~/.vesta/hooks/diagnose-entity.sh`
+- A hook is never called directly by users; it's internal to the entity
+- Commands are human-friendly; hooks are system-friendly
+
+### 12.7 Passenger.json Skills Registration
+
+Every entity's `passenger.json` declares its hooks under a `skills` array:
+
+```json
+{
+  "handle": "vesta",
+  "name": "Vesta",
+  "role": "architect",
+  "skills": [
+    {
+      "name": "diagnose-entity",
+      "description": "Audit entity structure and report conformance",
+      "categories": ["diagnostic"]
+    },
+    {
+      "name": "audit-inventory",
+      "description": "List and audit all entity files",
+      "categories": ["audit", "inventory"]
+    }
+  ]
+}
+```
+
+**Schema for skills array:**
+
+```json
+{
+  "name": "string (required) — hook filename without .sh",
+  "description": "string (required) — human-readable purpose",
+  "categories": ["array of strings (optional) — semantic tags like 'diagnostic', 'healing', 'audit'"]
+}
+```
+
+### 12.8 Argus Hook Audit Protocol
+
+When Argus audits an entity, it:
+
+1. **Reads passenger.json** and extracts the `skills` array
+2. **Verifies each skill** exists as a hook file: `$ENTITY_DIR/hooks/<name>.sh`
+3. **Checks hook format:**
+   - File is executable (`chmod +x`)
+   - File has shebang: `#!/usr/bin/env bash`
+   - File has required metadata comments (Hook, Description, Input, Output, Exit)
+4. **Validates contracts:**
+   - Runs hook with expected input
+   - Checks output matches declared format (JSON, text, etc.)
+   - Verifies exit code is as declared
+5. **Reports discrepancies:**
+   - Missing hook files
+   - Non-executable hooks
+   - Contracts not met
+   - Undeclared hooks in passenger.json
+
+**Audit invocation (Argus):**
+
+```bash
+# Argus checks if vesta's declared skills match actual hooks
+argus audit-hooks vesta
+
+# Output: diagnostic report with issues and recommendations
+```
+
+### 12.9 Hook Lifecycle
+
+**Creation:**
+
+```bash
+mkdir -p ~/.myentity/hooks
+cat > ~/.myentity/hooks/verify-state.sh << 'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Hook: verify-state
+# Description: Check if entity is in a valid state
+# Input:  (none)
+# Output: JSON {valid: bool, reason: string}
+# Exit:   0 = valid, 1 = invalid
+
+# Implementation...
+EOF
+chmod +x ~/.myentity/hooks/verify-state.sh
+```
+
+**Registration (passenger.json):**
+
+```json
+{
+  "skills": [
+    {
+      "name": "verify-state",
+      "description": "Check if entity is in a valid state",
+      "categories": ["diagnostic"]
+    }
+  ]
+}
+```
+
+**Audit (Argus):**
+
+```bash
+argus audit-hooks myentity
+# Verifies hook exists, is executable, has metadata, and meets contract
+```
+
+### 12.10 Hook Best Practices
+
+1. **One hook, one purpose:** Each hook does one focused thing
+2. **Deterministic output:** Same input always produces same output
+3. **No side effects:** Hooks should not modify entity state (unless documented)
+4. **Declarative contracts:** Input and output must be predictable
+5. **Exit codes matter:** Use 0 for success, 1+ for error conditions
+6. **JSON output:** For structured data, use JSON (not plain text)
+7. **Documented:** Every hook has a clear description
+
+### 12.11 Conformance Checklist for Hooks
+
+- [ ] Hook file exists in `~/.entity/hooks/<name>.sh`
+- [ ] Hook is executable (`chmod +x hooks/<name>.sh`)
+- [ ] Hook has shebang: `#!/usr/bin/env bash`
+- [ ] Hook has required metadata comments (Hook, Description, Input, Output, Exit)
+- [ ] Hook uses `$ENTITY` and `$ENTITY_DIR` (if needed)
+- [ ] Hook returns appropriate exit code (0 for success, 1+ for failure)
+- [ ] Hook output matches declared contract (JSON, text, etc.)
+- [ ] Hook is registered in `passenger.json` under `skills`
+- [ ] Hook has no side effects (unless documented)
+- [ ] Hook is tested with expected input/output
+
+---
+
+## 13. Implementation Reference
 
 ### Live Examples
 
@@ -733,7 +1027,7 @@ mkdir -p ~/.${ENTITY_NAME}/{id,trust/bonds,commands}
 
 ---
 
-## 13. Conformance Checklist
+## 14. Conformance Checklist
 
 Use this checklist to verify that a command conforms to VESTA-SPEC-006:
 
@@ -752,15 +1046,87 @@ Use this checklist to verify that a command conforms to VESTA-SPEC-006:
 
 ---
 
-## 14. Version History
+## 15. Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1 (canonical) | 2026-04-03 | Extended: added Section 12 (Skills as Hooks) defining hook directory structure, naming convention, metadata requirements, passenger.json registration, and Argus audit protocol |
 | 1.0 (canonical) | 2026-04-03 | Initial spec: discovery order, structure, execution environment, subcommand patterns, error handling |
 
 ---
 
-## Appendix A: .gitignore Pattern for Commands
+## Appendix A: Hook Example — Vesta's `diagnose-entity` Hook
+
+**Path:** `~/.vesta/hooks/diagnose-entity.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Hook: diagnose-entity
+# Description: Audit entity structure and report conformance against VESTA-SPEC-001
+# Input:  (none)
+# Output: JSON {status: "ok"|"warning"|"error", issues: [{severity, path, detail}]}
+# Exit:   0 = conformant, 1 = violations found
+
+ENTITY="${ENTITY:?ENTITY not set}"
+ENTITY_DIR="${ENTITY_DIR:?ENTITY_DIR not set}"
+
+issues=()
+
+# Check required directories
+for dir in id trust/bonds memories; do
+  if [[ ! -d "$ENTITY_DIR/$dir" ]]; then
+    issues+=("{\"severity\": \"error\", \"path\": \"$dir\", \"detail\": \"Missing required directory\"}")
+  fi
+done
+
+# Check required files
+for file in CLAUDE.md .env passenger.json .gitignore; do
+  if [[ ! -f "$ENTITY_DIR/$file" ]]; then
+    issues+=("{\"severity\": \"error\", \"path\": \"$file\", \"detail\": \"Missing required file\"}")
+  fi
+done
+
+# Check key files exist
+for key in id/ed25519.pub id/ecdsa.pub id/rsa.pub; do
+  if [[ ! -f "$ENTITY_DIR/$key" ]]; then
+    issues+=("{\"severity\": \"error\", \"path\": \"$key\", \"detail\": \"Missing public key\"}")
+  fi
+done
+
+# Check trust bond exists
+if [[ ! -f "$ENTITY_DIR/trust/bonds/koad-to-$ENTITY.md" ]]; then
+  issues+=("{\"severity\": \"error\", \"path\": \"trust/bonds/koad-to-$ENTITY.md\", \"detail\": \"Missing koad authorization bond\"}")
+fi
+
+# Output diagnosis
+if [[ ${#issues[@]} -eq 0 ]]; then
+  jq -n '{status: "ok", issues: []}'
+  exit 0
+else
+  jq -n --arg issues "$(IFS=,; printf '%s' "${issues[*]}")" '{status: "error", issues: ($issues | split(",") | map(fromjson))}'
+  exit 1
+fi
+```
+
+**Registration in passenger.json:**
+
+```json
+{
+  "skills": [
+    {
+      "name": "diagnose-entity",
+      "description": "Audit entity structure and report conformance against VESTA-SPEC-001",
+      "categories": ["diagnostic"]
+    }
+  ]
+}
+```
+
+---
+
+## Appendix B: .gitignore Pattern for Commands
 
 Framework layer commands directory `.gitignore`:
 

@@ -64,7 +64,7 @@ Most entities include these for operational tracking:
 ```
 ~/.ENTITY/
 ├── commands/           ← entity-authored commands (if any)
-├── hooks/              ← git hooks and event handlers (if configured)
+├── hooks/              ← system-callable skills (registered in passenger.json)
 ├── comms/              ← inter-entity communication logs (if active)
 ├── keybase/            ← Keybase/Saltpack integration (if using)
 ├── home/               ← entity home directory structure
@@ -224,6 +224,13 @@ Metadata about the entity for the Passenger UI/daemon. Location: `ENTITY_DIR/pas
 {
   "avatar": "string (path to image file)",
   "status": "string (operational status: active, paused, dormant)",
+  "skills": [
+    {
+      "name": "string (hook filename without .sh)",
+      "description": "string (hook purpose)",
+      "categories": ["array of semantic tags: diagnostic, healing, audit, etc."]
+    }
+  ],
   "buttons": [
     {
       "label": "string (button label)",
@@ -234,6 +241,44 @@ Metadata about the entity for the Passenger UI/daemon. Location: `ENTITY_DIR/pas
 }
 ```
 
+### Skills Array
+
+The `skills` array declares all hooks (system-callable capabilities) that the entity supports. Each entry corresponds to a hook file in the `hooks/` directory (see VESTA-SPEC-006 Section 12 for full hook specification).
+
+**Schema for skills array:**
+
+| Field | Type | Required | Purpose |
+|-------|------|----------|---------|
+| `name` | string | Yes | Hook filename without `.sh` extension |
+| `description` | string | Yes | Human-readable description of the hook's purpose |
+| `categories` | array | No | Semantic tags for classification (e.g., `["diagnostic", "audit"]`) |
+
+**Example:**
+
+```json
+{
+  "skills": [
+    {
+      "name": "diagnose-entity",
+      "description": "Audit entity structure and report conformance",
+      "categories": ["diagnostic"]
+    },
+    {
+      "name": "audit-inventory",
+      "description": "List and audit all entity files",
+      "categories": ["audit", "inventory"]
+    },
+    {
+      "name": "verify-keys",
+      "description": "Verify cryptographic keys are present and valid",
+      "categories": ["diagnostic", "security"]
+    }
+  ]
+}
+```
+
+**Argus Compliance:** The `skills` array must match the actual hooks present in `~/.ENTITY/hooks/` directory. Argus audits this correspondence as part of VESTA-SPEC-001 conformance checks.
+
 ### Example
 
 ```json
@@ -242,6 +287,14 @@ Metadata about the entity for the Passenger UI/daemon. Location: `ENTITY_DIR/pas
   "name": "Vesta",
   "role": "architect",
   "avatar": "avatar.png",
+  "status": "active",
+  "skills": [
+    {
+      "name": "diagnose-entity",
+      "description": "Audit entity structure and report conformance",
+      "categories": ["diagnostic"]
+    }
+  ],
   "buttons": [
     {
       "label": "Specs",
@@ -355,6 +408,7 @@ When Argus audits an entity, it verifies:
 6. **Git state:** Repository is clean, HEAD points to main, remote origin is correct
 7. **File integrity:** No unexpected files in `id/` or `trust/bonds/`
 8. **Permissions:** Ownership and permissions match spec
+9. **Skills inventory:** All hooks declared in `passenger.json` skills array exist in `hooks/` directory; hooks are executable, have required metadata, and meet declared input/output contracts (see VESTA-SPEC-006 Section 12.8)
 
 ### Salus Healing Standards
 
@@ -494,6 +548,8 @@ If entity is compromised or untrustworthy:
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.1 (canonical) | 2026-04-03 | vesta | Extended: added hooks/ to standard subdirectories; updated passenger.json schema to include skills array; added Argus audit criterion 9 for skills inventory verification (See VESTA-SPEC-006 Section 12 for full hook specification). |
+| 1.0 (canonical) | 2026-04-03 | vesta | **CANONICAL** — Initial comprehensive spec covering directory structure, required files, .env schema, and conformance criteria. |
 | 0.1 | 2026-04-03 | vesta | **DRAFT** — Initial comprehensive spec covering directory structure, required files, .env schema, and conformance criteria. |
 
 ---
