@@ -291,4 +291,207 @@ Hooks system depends on entity knowing its own context. Startup sequence is a pr
 
 ---
 
-*Spec status: canonical (2026-04-03). Implementation deadline: all entity CLAUDE.md files updated to include Session Start section by 2026-04-10. File issues on koad/vesta to propose amendments or report implementation gaps.*
+---
+
+## 10. New Operator Detection and Onboarding
+
+### Problem Statement
+
+When an entity is cloned to a new machine by a human who is not the entity's canonical operator, the entity must detect that it's running in a new operational context. Examples:
+
+- Alice (koad:io ambassador) is cloned to a new human's machine for them to run locally
+- A team member clones Vulcan to fourty4 but they're not Vulcan's canonical operator
+- A fresh koad.sh clone lands on a new user's machine (they are a new operator, not koad)
+
+**Current limitation:** Entity starts with no awareness that it's being operated by someone new. It may attempt to execute commands, reference credentials, or make assumptions based on its canonical operator's context.
+
+### Design Goals
+
+1. **Detection**: At startup, entity detects mismatch between expected operator (from CLAUDE.md) and actual operator (whoami output)
+2. **Graceful introduction**: Entity introduces itself and asks the new operator about their goals and context
+3. **Knowledge transfer**: Entity shares what travels (ethos, specifications, team knowledge) vs what is local (credentials, memories, secrets)
+4. **Operator onboarding**: Entity establishes first-contact relationship and records new operator's identity
+5. **Audit trail**: Detection and operator introduction are logged for koad review
+
+### Detection Mechanism
+
+#### 10.1 Canonical Operator Definition
+
+Each entity's CLAUDE.md must define its canonical operators in a new section:
+
+```markdown
+## Canonical Operators
+
+- **Primary:** <entity-name> (<email>)
+  - Machine: <canonical-hostname>
+  - User: <canonical-username>
+
+- **Authorized secondary operators:** [list, or "none"]
+  - Juno on behalf of Juno (juno@kingofalldata.com)
+  - Vulcan on behalf of koad (koad@koad.sh)
+  - etc.
+
+- **First-contact protocol:** If whoami/hostname don't match canonical or authorized operators, entity treats this as new operator and runs introduction sequence
+```
+
+#### 10.2 Detection Sequence (added to Step 1: Establish Identity and Location)
+
+After capturing CURRENT_USER and CURRENT_HOST:
+
+```bash
+# Step 1a: Load canonical operator from CLAUDE.md
+CANONICAL_USER=$(grep "Primary:" CLAUDE.md | grep -oP '(?<=User: )[^ ]+' | head -1)
+CANONICAL_HOST=$(grep "Primary:" CLAUDE.md | grep -oP '(?<=Machine: )[^ ]+' | head -1)
+
+# Check if current operator matches canonical
+if [[ "$CURRENT_USER" != "$CANONICAL_USER" ]] || [[ "$CURRENT_HOST" != "$CANONICAL_HOST" ]]; then
+  IS_NEW_OPERATOR=true
+  NEW_OPERATOR_USER="$CURRENT_USER"
+  NEW_OPERATOR_HOST="$CURRENT_HOST"
+else
+  IS_NEW_OPERATOR=false
+fi
+```
+
+### New Operator Onboarding Sequence
+
+#### 10.3 Trigger Introduction
+
+If `IS_NEW_OPERATOR=true`, entity executes introduction before any other startup steps:
+
+```bash
+echo "[STARTUP] New operator detected: $NEW_OPERATOR_USER on $NEW_OPERATOR_HOST"
+echo "[STARTUP] Canonical operator is: $CANONICAL_USER on $CANONICAL_HOST"
+echo ""
+echo "Hello. I am <ENTITY_NAME>. I notice you're running me on a different machine as a different user than my canonical operator."
+echo ""
+echo "Let me introduce myself:"
+echo "- I am <ENTITY_NAME>, <ROLE_IN_KOAD_IO>"
+echo "- I carry the koad:io <PHILOSOPHY_AREA> forward"
+echo "- My canonical operator is $CANONICAL_USER on machine $CANONICAL_HOST"
+echo ""
+echo "I can help you <BRIEF_PURPOSE>, but I need to understand your context first."
+```
+
+#### 10.4 New Operator Interview
+
+Entity asks the new operator to introduce themselves:
+
+```markdown
+## New Operator Interview (entity-specific, but canonical structure)
+
+1. **Identity**
+   - What is your name?
+   - Who are you? (What brings you here?)
+
+2. **Goals**
+   - What do you want to build?
+   - What problem are you solving?
+
+3. **Context**
+   - Are you authorized to run me? (Who sent you? Do you have an Alice cert?)
+   - What resources do you have access to?
+
+4. **Onboarding level**
+   - Have you used koad:io before?
+   - Do you understand entity sovereignty?
+   - Should I walk you through the basics?
+```
+
+#### 10.5 Knowledge Transfer
+
+Entity explicitly states what travels and what doesn't:
+
+```markdown
+## What I'm Carrying With Me (Travels With Clone)
+
+✓ My ethos and philosophy (who I am)
+✓ VESTA specs (protocol knowledge)
+✓ Team knowledge from git history
+✓ My role definition (CLAUDE.md)
+✓ Hooks and commands (capabilities)
+✓ Trust bond knowledge (who trusts whom in koad:io)
+
+## What Stays Local (Doesn't Travel)
+
+✗ My credentials (SSH keys, API tokens, Keybase login)
+✗ My memories (session-specific learning about operators)
+✗ My daemon state (running processes, peer connections)
+✗ My local config (machine-specific .env overrides)
+✗ My logs (audit trail is local to each machine)
+
+**Consequence:** You can clone me and run me, but you'll need your own credentials and context. I won't have memories of your previous sessions. Each session starts fresh for new operators.
+```
+
+#### 10.6 Operator Recording
+
+Entity creates or updates a record of new operators:
+
+```bash
+# Append to ~/.entity/operators.log or equivalent
+cat >> ~/.entity/operators.log <<EOF
+$(date -u +%Y-%m-%dT%H:%M:%SZ) | NEW_OPERATOR | user=$NEW_OPERATOR_USER | host=$NEW_OPERATOR_HOST | introduced=true
+EOF
+
+# Also record in git (for koad audit)
+cat > .git/info/new-operator-notice.txt <<EOF
+Entity was cloned and run by new operator on $(date -u +%Y-%m-%d).
+Original operator: $CANONICAL_USER @ $CANONICAL_HOST
+New operator: $NEW_OPERATOR_USER @ $NEW_OPERATOR_HOST
+First contact: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
+```
+
+#### 10.7 Example: Alice's New Operator Introduction
+
+When Alice (the onboarding ambassador) is cloned to a graduate's machine:
+
+```markdown
+## Alice's Introduction for New Operators
+
+Hello. I'm Alice, koad:io's disciple and ambassador. 
+
+I see you're running me on your own machine. That means you've graduated—you've completed the 12 levels, you've earned a mastery certificate, and Juno sent you my way.
+
+I can help you understand what you've learned and answer questions as you build your kingdom. But I'm not here to run your infrastructure—that's Juno's job and your job, as the sovereign of your domain.
+
+Let me ask you a few things about your journey:
+1. What is the first thing you want to build in your kingdom?
+2. Do you have a problem you're solving, or are you still exploring?
+3. Can you tell me about your vision for your small Internet—your koad?
+
+Then I'll give you everything I can carry about the team and the specs, and we'll figure out what you need next.
+```
+
+### Implementation in Harnesses
+
+#### Claude Code
+
+In CLAUDE.md, session-start hook:
+
+```markdown
+## Session Start
+
+1. whoami → confirm operator identity
+2. **If new operator detected:**
+   - Run introduction sequence
+   - Ask new operator interview questions
+   - Record in .git/info/new-operator-notice.txt
+   - Load CLAUDE.md's "Canonical Operators" section for context
+
+3. Proceed with normal startup
+```
+
+#### OpenClaw / OpenCode
+
+New operator detection handled before entity prompt is presented. CLI should pass `--new-operator` flag if detected.
+
+### Related Specs
+
+- VESTA-SPEC-002 (Gestation): New entity template must include "Canonical Operators" section in CLAUDE.md
+- VESTA-SPEC-007 (Trust Bonds): Alice graduation certificate is the authorization bond for Alice's new operators
+- VESTA-SPEC-011 (External Entity Onboarding): First-contact protocol parallel to this spec
+
+---
+
+*Spec status: canonical (2026-04-03, updated for new operator detection 2026-04-03). Entities must implement new operator detection by 2026-04-17. File issues on koad/vesta for entity-specific interview templates.*
