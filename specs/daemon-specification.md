@@ -308,9 +308,10 @@ Meteor.startup(async () => {
 | `delay` | number | No | 0-N | Delay in minutes after interval boundary before first execution |
 | `task` | async function | **Yes** | N/A | Async function to execute; receives no arguments; must handle errors |
 | `runImmediately` | boolean | No | default: false | If true, run task once on registration; don't wait for interval |
-| `type` | string | No | N/A | Worker type (e.g., "cleanup", "sync", "report") for tagging |
+| `type` | string | No | enum | Worker type: `cron`, `event`, `hook`, or `manual`; determines execution model |
 | `maxAttempts` | number | No | 1-3 | Max retry attempts on failure (default: 3) |
 | `timeout` | number | No | 1000+ | Task timeout in milliseconds (default: 300000 = 5 min) |
+| `concurrency` | string | No | enum | Concurrency model: `no-parallel` (default) or `allow-parallel` |
 
 **Returns:** Worker registration object:
 ```javascript
@@ -321,6 +322,56 @@ Meteor.startup(async () => {
   stop: async () => { /* unregister */ }
 }
 ```
+
+### 4.2.1 Worker Type Enumeration
+
+Valid values for `type` field:
+
+| Type | Description | Execution Model | Use Cases |
+|------|-------------|-----------------|-----------|
+| `cron` | Time-based scheduled task | Executes on fixed interval (e.g., hourly, daily) | Cleanup jobs, cache refresh, periodic reporting |
+| `event` | Event-driven task | Executes when specific event fires in entity system | Webhook handlers, real-time processors, reactive tasks |
+| `hook` | Lifecycle hook task | Executes in response to daemon or entity lifecycle events (startup, shutdown, etc.) | Initialization, cleanup, synchronization |
+| `manual` | User-triggered task | Executes only when explicitly invoked by user or external caller | Admin actions, diagnostics, recovery procedures |
+
+**Default:** If `type` is not specified, defaults to `cron`.
+
+### 4.2.2 Concurrency Model
+
+The `concurrency` field determines how the daemon handles overlapping task executions:
+
+| Model | Behavior | When Next Execution Fires |
+|-------|----------|--------------------------|
+| `no-parallel` (default) | If a worker task is already running, skip the scheduled execution. Log a `skipped` event with reason. | When current execution completes, next execution is scheduled from current time + interval |
+| `allow-parallel` | Allow multiple instances of the same worker to run concurrently. | All scheduled executions fire, even if previous is still running |
+
+**Default:** `no-parallel`. This prevents queue buildup and avoids duplicate work if a task runs longer than its interval.
+
+**Example: Skip Detection**
+
+Worker configured with:
+```javascript
+{
+  service: "cleanup",
+  interval: 5,        // Run every 5 minutes
+  timeout: 600000,    // 10 minute timeout (longer than interval!)
+  concurrency: "no-parallel"
+}
+```
+
+Timeline:
+```
+10:00:00 - Task starts (will take ~8 minutes)
+10:05:00 - Next execution scheduled
+  → But task still running from 10:00:00
+  → Daemon logs: 'skipped' event with reason="worker-already-running"
+  → No execution happens
+10:08:00 - Task completes
+  → Next execution recalculated: 10:08:00 + 5 min = 10:13:00
+10:13:00 - Task runs again
+```
+
+Skipped events are logged to the worker document with timestamp and reason, visible to Salus monitoring.
 
 ### 4.3 Worker Collection Document Structure
 
@@ -797,33 +848,69 @@ setInterval(() => {
   });
 
   // Check 4: DDP session alive
-  if (!domeSession.isConnected) {
+  if (!ddpSession.isConnected) {
     logger.warn('DDP connection lost, attempting reconnect');
   }
 }, 60000);
 ```
 
-**Salus query protocol:**
+### 8.3.1 `/api/health` HTTP Endpoint
 
-Salus contacts daemon at `http://DAEMON_HOST:DAEMON_PORT/api/health` (or queries MongoDB directly):
+The daemon exposes a health check endpoint for Salus and external monitoring systems. This is a Meteor WebApp middleware route on the same port as DDP (default: 28282).
 
+**Endpoint:** `GET /api/health`  
+**Authentication:** None required (health checks must be accessible)  
+**Response Type:** JSON  
+**Implementation:** Meteor WebApp middleware registered at daemon startup
+
+**Example request:**
 ```bash
-# Query worker health
-curl -s http://127.0.0.1:28282/api/workers-health | jq .
+curl -s http://127.0.0.1:28282/api/health | jq .
+```
 
-# Expected response:
+**Response shape (all fields required):**
+```json
 {
-  "status": "healthy",
-  "daemon_uptime_seconds": 3600,
-  "mongodb_ok": true,
-  "zerotier_ok": true,
-  "workers_total": 12,
-  "workers_healthy": 11,
-  "workers_insane": 0,
-  "workers_stale": 1,
-  "last_check": "2026-04-03T10:45:00Z"
+  "status": "healthy|degraded|unhealthy",
+  "passengers": 8,
+  "workers": {
+    "total": 12,
+    "healthy": 11,
+    "insane": 0,
+    "stale": 1
+  },
+  "uptime": 3600,
+  "version": "1.0.0"
 }
 ```
+
+**Field definitions:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | One of: `healthy` (all systems nominal), `degraded` (some workers failing but daemon operating), `unhealthy` (daemon or MongoDB offline) |
+| `passengers` | number | Count of registered passengers (entities with valid `passenger.json`) |
+| `workers` | object | Worker state summary (see below) |
+| `workers.total` | number | Total registered workers (enabled and disabled) |
+| `workers.healthy` | number | Workers with `state: "running"` and `errorCount < maxAttempts` |
+| `workers.insane` | number | Workers with `insane: true` (maxed retry attempts) |
+| `workers.stale` | number | Workers with no heartbeat for 5+ minutes |
+| `uptime` | number | Daemon uptime in seconds (current time - `DAEMON_UPSTART_TIME`) |
+| `version` | string | Daemon version (from `DAEMON_VERSION` env var) |
+
+**Status logic:**
+- `healthy`: All workers `healthy`; MongoDB and DDP responsive; no stale workers
+- `degraded`: Some workers stale or insane, but daemon operating; MongoDB accessible; can accept new task registrations
+- `unhealthy`: MongoDB unreachable OR daemon process not responsive OR DDP server down
+
+**Salus uses this endpoint to:**
+- Monitor daemon availability (GET /api/health succeeds)
+- Detect worker failures (if `workers.insane > 0`, alert immediately)
+- Detect stale workers (if `workers.stale > 0`, log warning)
+- Estimate system health (check `status` field for degraded/unhealthy)
+- Track daemon uptime (useful for restart detection)
+
+### 8.3.2 Salus Query Protocol
 
 ### 8.4 Graceful Shutdown
 
@@ -839,6 +926,64 @@ When daemon shuts down (systemd stop, SIGTERM, etc.):
 6. Close DDP server
 7. Close MongoDB connection
 8. Exit daemon process
+```
+
+### 8.5 MongoDB Outage Recovery
+
+MongoDB unavailability causes worker execution to fail but does not crash the daemon. This section defines recovery behavior when MongoDB comes back online.
+
+**Initial MongoDB down scenario:**
+1. Daemon starts; attempts MongoDB connection
+2. If MongoDB unavailable: logs warning, continues with degraded operation
+3. `/api/health` returns `status: "unhealthy"`
+4. Worker registration still accepted (queued in memory)
+5. Worker execution blocked (no state persistence possible)
+6. Salus receives `unhealthy` status and alerts
+
+**MongoDB recovery sequence:**
+1. MongoDB process comes online (manual restart, replica set failover, etc.)
+2. Daemon's MongoDB health check (every 60s) detects connection restored
+3. Logs: "MongoDB reconnected, recovering worker state"
+4. Daemon queries `workers` collection for existing documents
+5. For each worker:
+   - If `instanceId` matches current daemon instance: resume normally
+   - If `instanceId` is old (from previous daemon instance): update `instanceId`, resume from `nextExecution`
+6. Queued worker registrations (from step 4) now persist to MongoDB
+7. `/api/health` status transitions: `unhealthy` → `healthy` (or `degraded` if stale workers detected)
+8. Salus detects recovery via health check; clears alert
+
+**Worker task loss prevention:**
+- Worker state lives in MongoDB, not daemon memory
+- If daemon crashes before MongoDB connection lost, worker state already persisted
+- On daemon restart, queries MongoDB for existing workers and resumes
+- No worker tasks are lost due to MongoDB transience
+
+**Configuration for resilience:**
+
+Use these env vars to tune MongoDB reconnection behavior:
+
+| Variable | Type | Default | Purpose |
+|----------|------|---------|---------|
+| `MONGODB_RECONNECT_INTERVAL_MS` | number | 5000 | How often to retry MongoDB connection (5 seconds) |
+| `MONGODB_RECONNECT_MAX_ATTEMPTS` | number | 0 (infinite) | Max reconnection attempts before giving up; 0 = infinite |
+| `KOAD_IO_AUTO_SPAWN_MONGO` | bool | true | Auto-start MongoDB service if process exits |
+
+**Example timeline — MongoDB replica set failover:**
+
+```
+10:00:00 - MongoDB primary node fails
+10:00:05 - Daemon health check detects connection lost
+          - Logs: "MongoDB unavailable, continuing with degraded operation"
+          - /api/health returns {status: "unhealthy"}
+10:00:30 - Replica set elects new primary (20 second election window)
+10:00:35 - Daemon health check retries, succeeds
+          - Logs: "MongoDB reconnected, recovering worker state"
+          - Queries workers collection; finds 5 existing workers
+          - Updates all instanceIds to current daemon instance
+          - /api/health returns {status: "healthy"}
+10:00:36 - All workers resume execution from their next scheduled times
+          - No tasks were lost
+          - Salus detects recovery; clears alert
 ```
 
 ---
