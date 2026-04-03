@@ -1,8 +1,9 @@
 ---
 title: "Signing and Identity Layer — Keybase and Saltpack"
 spec-id: VESTA-SPEC-011
-status: draft
+status: canonical
 created: 2026-04-03
+promoted: 2026-04-03
 author: Vesta (vesta@kingofalldata.com)
 reviewers: [koad, Juno]
 related-issues: [koad/vesta#3]
@@ -295,7 +296,177 @@ Revocations are advisory — the actual GitHub/repo-level access is controlled s
 
 ---
 
-## 5. Key Rotation and Compromise
+## 5. KBFS Layout and Directory Structure
+
+### Entity KBFS namespace
+
+Each entity with a Keybase account has three KBFS namespaces:
+
+```
+/keybase/public/<entity-name>/        ← Public artifacts, publications
+/keybase/private/koad/<entity-name>/  ← Private entity↔koad channel
+/keybase/team/koad.io/<entity-name>/  ← Internal team coordination (if applicable)
+```
+
+### Public namespace: `/keybase/public/koad-<entity>/`
+
+The public namespace is used for:
+- **Published trust bonds** — readable by external parties
+- **Public keys** — backup source for entity public key
+- **Release notes** — entity's announcements
+- **Service status** — entity health and availability
+
+**File structure:**
+```
+/keybase/public/koad-juno/
+├── keys/
+│   └── signing-key.pub              # Juno's public key (backup)
+├── bonds/
+│   ├── koad-2026-04-01-delegation.signed.txt
+│   └── vesta-2026-04-02-channel.signed.txt
+├── README.md                         # Entity description
+└── STATUS.md                         # Current operational status
+```
+
+### Private namespace: `/keybase/private/koad/<entity>/`
+
+The private namespace is a secure channel between koad and the entity:
+- Created when entity reaches Tier 2 (team membership)
+- Readable only by koad and the entity
+- Used for sensitive coordination, incident reports, key rotation notifications
+
+**File structure:**
+```
+/keybase/private/koad/juno/
+├── incidents/                        # Incident reports (read-only for koad)
+├── key-rotations/                    # Key change notifications
+├── coordination/                      # Shared task state during incidents
+└── logs/                             # Archive of past incidents
+```
+
+### Team namespace: `/keybase/team/koad.io/<entity>/`
+
+The team namespace is used only for entities in Tier 2 or above:
+- Shared coordination space visible to all koad:io entities
+- Read-write by default
+- Used for operational dashboards, shared status, incident tracking
+
+**File structure:**
+```
+/keybase/team/koad.io/juno/
+├── status.json                       # Current status (heart beat)
+├── incidents/
+│   └── 2026-04-01-db-timeout.md     # Active incidents
+├── deployments/
+│   └── main-2026-04-03.log          # Deployment logs
+└── metrics/                          # Operational metrics
+```
+
+### Access control and trust
+
+KBFS namespaces enforce access control through Keybase:
+- **Public:** Readable by anyone on the internet
+- **Private:** Readable only by koad and the entity (encrypted at rest)
+- **Team:** Readable by team members only (encrypted at rest)
+
+This provides confidentiality without requiring a separate access control system.
+
+---
+
+## 6. Keybase Team KV Store Protocol
+
+### Overview
+
+Keybase team chat rooms support key-value storage accessible via `keybase kvstore` CLI. This is used for shared operational state that must be available to multiple entities but does not require versioning or git history.
+
+### KV store design goals
+
+- **Eventual consistency:** Updates propagate within seconds
+- **No version history:** Overwrites are final (use git for historical data)
+- **Atomic per-key:** Each key is atomically updated
+- **Namespace isolation:** Each team has its own KV store
+
+### Store layout
+
+Each team's KV store is organized by entity and concern:
+
+```
+koad:io-core/kvstore/
+
+Global operational state:
+  koad/environment              ← Current environment (prod, staging, test)
+  koad/deployment-in-progress   ← Deployment lock (boolean)
+  koad/alert-level              ← System alert level (normal, warning, critical)
+
+Per-entity state:
+  juno/status                   ← Juno's operational status (heartbeat)
+  juno/last-update              ← Timestamp of last status update
+  vulcan/status                 ← Vulcan's operational status
+  vulcan/last-update            ← Timestamp of last update
+
+Incident coordination:
+  incidents/active              ← Count of active incidents
+  incidents/on-call             ← Current on-call entity
+  incidents/last-updated        ← Timestamp of last incident update
+```
+
+### Writing to the KV store
+
+**Set a value:**
+```bash
+keybase kvstore set koad:io-core juno/status "running"
+keybase kvstore set koad:io-core juno/last-update "2026-04-03T14:22:00Z"
+```
+
+**Get a value:**
+```bash
+keybase kvstore get koad:io-core juno/status
+```
+
+### Implementation: Entity heartbeat
+
+Entities in Tier 2+ should publish a heartbeat every 5 minutes:
+
+```bash
+#!/bin/bash
+# ~/.entity/commands/heartbeat
+TIMESTAMP=$(date -Iseconds)
+STATUS="running"  # or "degraded", "offline", etc.
+
+keybase kvstore set koad:io-core "$ENTITY/status" "$STATUS"
+keybase kvstore set koad:io-core "$ENTITY/last-update" "$TIMESTAMP"
+```
+
+Scheduled via cron:
+```bash
+*/5 * * * * ~/.entity/commands/heartbeat
+```
+
+### Design: No strong consistency guarantee
+
+The KV store is **not** a database — updates may take seconds to propagate and there is no strong consistency guarantee. Therefore:
+
+- **Do not use for:** Critical decisions, access control, secrets storage
+- **Do use for:** Status indicators, operational dashboards, incident coordination
+- **Design for eventual consistency:** Assume updates lag by 30 seconds
+
+If strong consistency is required, commit to git instead.
+
+### Privacy and access
+
+KV store values in a **private team** are encrypted at rest and not accessible to non-members. Values are suitable for:
+- Entity status and health
+- Incident descriptions
+- Deployment progress
+
+Do not store:
+- Private keys
+- Database credentials
+- Secrets of any kind
+
+---
+
+## 7. Key Rotation and Compromise
 
 ### Rotation schedule
 
@@ -356,7 +527,7 @@ The compromised key is revoked but not deleted from history. Old bonds signed by
 
 ---
 
-## 6. Implementation: Saltpack Tooling
+## 8. Implementation: Saltpack Tooling
 
 ### Command-line interface
 
@@ -407,7 +578,7 @@ done
 
 ---
 
-## 7. Interoperability and Fallback
+## 9. Interoperability and Fallback
 
 ### Keybase unavailability
 
@@ -440,7 +611,7 @@ Every signed document that affects the system is committed to the repo. This cre
 
 ---
 
-## 8. Canonical Deployment
+## 10. Canonical Deployment
 
 ### Current state
 
@@ -471,7 +642,7 @@ For each entity, before enabling saltpack signing:
 
 ---
 
-## 9. Security Considerations
+## 11. Security Considerations
 
 ### Threat model
 
@@ -509,4 +680,4 @@ External parties verifying a signature must have the entity's public key. Provid
 
 ---
 
-*Spec status: draft (2026-04-03). This spec will be promoted to review after Vesta and koad complete implementation of saltpack signing for all trust bonds. File issues on koad/vesta to propose amendments.*
+*Spec status: canonical (promoted 2026-04-03). All entities must align to this specification. File issues on koad/vesta to propose amendments to the canonical spec.*
