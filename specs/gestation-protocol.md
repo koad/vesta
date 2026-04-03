@@ -22,7 +22,53 @@ Gestation is the process of creating a new entity that conforms to the canonical
 
 ---
 
-## 2. Pre-Conditions
+## 2. Naming Convention
+
+Entity names are foundational to identity and trust. This section establishes the canonical naming rules.
+
+### Philosophy
+
+Entity names MUST be **human-ish** — they should sound like a person's name, not a product or concept. The koad:io house style uses Roman and classical mythology names (Juno, Vulcan, Vesta, Mercury, Salus, Argus, etc.). These names convey personality, are memorable, and have historical precedent in computing systems.
+
+### Naming Rules
+
+1. **Format:** Lowercase, 3-12 characters, no hyphens, underscores, or special characters. Examples: `vesta`, `vulcan`, `juno`, `salus`, `argus`, `mercury`
+
+2. **Reserved names:** The following names are permanently reserved and MUST NOT be reused:
+   - `koad` (root authority)
+   - `juno` (mother entity, orchestrator)
+   - `vesta` (platform stewardship)
+   - `vulcan` (builder)
+
+3. **Namespace Conflicts:** Before gestation, the entity name MUST be checked for conflicts with:
+   - **AI models/assistants:** Claude, Gemini, ChatGPT, Copilot, Codex, etc. (and related product families)
+   - **Developer tools:** Cursor, Copilot, Tabnine, Kite, etc.
+   - **Major software brands:** Docker, Kubernetes, Git, Redis, Postgres, etc.
+   - **Social networks or platforms:** Twitter, Discord, Slack, GitHub, etc.
+
+   **Conflict Resolution:** If a conflict is found, REJECT the name and propose an alternative from Roman/classical mythology until a clear name emerges. Document the conflict and rejected alternative in the gestation log.
+
+4. **Memorability & Pronunciation:**
+   - Prefer names with 1-3 syllables (e.g., `vesta`, `mercury`, `salus` — short and crisp)
+   - Avoid names that are difficult to spell or pronounce in English (entities must be nameable over chat/Slack)
+   - Test pronunciation: can a non-native English speaker pronounce this without hesitation?
+
+### Examples
+
+✅ **Good Names:**
+- `vesta` — Roman goddess, memorable, no conflicts, 2 syllables
+- `mercury` — Roman god, pronounceable, no software conflicts, 3 syllables
+- `salus` — Roman goddess of health, memorable, no conflicts, 2 syllables
+
+❌ **Bad Names:**
+- `claude` — conflict with Claude AI model
+- `cursor` — conflict with Cursor editor
+- `postgres` — major software brand
+- `entity-helper-service-v2` — not human-ish, contains hyphens, too long
+
+---
+
+## 3. Pre-Conditions
 
 ### Authorization
 
@@ -55,6 +101,7 @@ Gestation **MUST NOT** occur:
 Before starting gestation, Vulcan verifies:
 
 - [ ] Entity name is valid: lowercase, 3-12 chars, no hyphens/underscores, not reserved (juno, vulcan, vesta, koad)
+- [ ] **Entity name cleared for namespace conflicts** (see section 2 — no AI models, tools, or software brands)
 - [ ] GitHub repository exists at `github.com/koad/<entity>`
 - [ ] Repository is empty (no commits, no content)
 - [ ] Caller has permission to gestate (trust bond check)
@@ -63,9 +110,9 @@ Before starting gestation, Vulcan verifies:
 
 ---
 
-## 3. Canonical Gestation Sequence
+## 4. Canonical Gestation Sequence
 
-The gestation process consists of 12 sequential steps. **Each step MUST complete successfully before the next begins.** If any step fails, gestation is aborted and the partial entity is removed (see error handling, section 5).
+The gestation process consists of 12 sequential steps. **Each step MUST complete successfully before the next begins.** If any step fails, gestation is aborted and the partial entity is removed (see error handling, section 6).
 
 ### Step 1: Directory Structure Creation
 
@@ -489,6 +536,8 @@ type: user
 
 I am <ENTITY_TITLE_CASE> — [role description].
 
+**Name:** <ENTITY_TITLE_CASE> — [classical/Roman name chosen per VESTA-SPEC-002 Section 2. Name was cleared for namespace conflicts before gestation.]
+
 ## What I Own
 
 - [List of protocol areas, systems, or responsibilities this entity owns]
@@ -512,7 +561,7 @@ It provides continuous understanding across conversations.
 EOF
 ```
 
-**Verification:** File exists, contains entity identity, is in auto-memory format.
+**Verification:** File exists, contains entity identity, is in auto-memory format. Name field mentions conflict-checking per VESTA-SPEC-002.
 
 ---
 
@@ -559,7 +608,7 @@ git log --oneline | head -1
 
 ---
 
-## 4. Template Substitution
+## 5. Template Substitution
 
 If the entity was gestated using a template (e.g., from Juno), all template placeholders MUST be substituted per VESTA-SPEC-003 (gestation-template-entity-substitution.md).
 
@@ -577,7 +626,7 @@ Required substitutions:
 
 ---
 
-## 5. Post-Gestation Checklist
+## 6. Post-Gestation Checklist
 
 After the initial commit, the entity is considered **gestated but not validated**. Vulcan MUST verify:
 
@@ -622,7 +671,7 @@ After the initial commit, the entity is considered **gestated but not validated*
 
 ---
 
-## 6. Error Handling
+## 7. Error Handling
 
 ### During Gestation
 
@@ -655,7 +704,7 @@ If gestation fails partway through and a human operator needs to resume:
 
 ---
 
-## 7. Conformance Criteria
+## 8. Conformance Criteria
 
 An entity has been successfully gestated if:
 
@@ -671,7 +720,7 @@ An entity has been successfully gestated if:
 
 ---
 
-## 8. Glossary
+## 9. Glossary
 
 | Term | Definition |
 |------|-----------|
@@ -683,9 +732,10 @@ An entity has been successfully gestated if:
 
 ---
 
-## 9. References
+## 10. References
 
 - VESTA-SPEC-001: Canonical Entity Model
+- VESTA-SPEC-002: Canonical Gestation Protocol (this spec) — Section 2 governs naming
 - VESTA-SPEC-003: Gestation Template Entity Substitution Protocol (placeholder replacement)
 - VESTA-SPEC-012: Entity Startup Specification
 - VESTA-SPEC-019: Entity Conformance Audit (Argus)
