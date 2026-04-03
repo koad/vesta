@@ -213,12 +213,43 @@ Layer 3: Command        ~/.entityname/commands/<cmd>/.env
 Layer 4: Ad-hoc         Inline exports or parent environment
 ```
 
+**Loading Mechanism:**
+
+The dispatcher implements cascade loading using `source` with shell options to prevent variable leakage:
+
+```bash
+# Start with clean environment
+set -a  # Auto-export all variables defined during sourcing
+
+# Layer 1: Framework defaults
+[[ -f ~/.koad-io/.env ]] && source ~/.koad-io/.env
+
+# Layer 2: Entity overrides
+[[ -f ~/.entityname/.env ]] && source ~/.entityname/.env
+
+# Layer 3: Command-specific overrides
+[[ -f ~/.entityname/commands/<cmd>/.env ]] && source ~/.entityname/commands/<cmd>/.env
+
+set +a  # Stop auto-exporting after cascade complete
+
+# Layer 4: Apply any ad-hoc exports from invoking context (handled by parent shell)
+```
+
+**Special Character Handling:**
+
+`.env` files may contain special characters (spaces, quotes, `$` symbols, newlines). Each file is sourced as shell syntax, so:
+- Values with spaces must be quoted: `MY_VAR="value with spaces"`
+- Values with special characters should be quoted: `MY_PROMPT="use \$ENTITY_DIR in task"`
+- Multi-line values use shell continuation: `MY_TEXT="line 1\
+line 2"`
+- Comments are supported: `# This is ignored`
+
 **Behavior:**
 
 1. Start with minimal shell environment (PATH, HOME, etc.)
-2. Source `~/.koad-io/.env` (framework defaults)
-3. Source `~/.entityname/.env` (entity overrides)
-4. Source `~/.entityname/commands/<cmd>/.env` (command-specific overrides)
+2. Execute `source ~/.koad-io/.env` with `set -a` (if file exists)
+3. Execute `source ~/.entityname/.env` with `set -a` (if file exists)
+4. Execute `source ~/.entityname/commands/<cmd>/.env` with `set -a` (if file exists)
 5. Apply any ad-hoc exports from the invoking context
 6. Execute the command
 
@@ -246,13 +277,49 @@ MY_COMMAND_DEBUG=true
 
 ### 5.1 Working Directory
 
-Commands execute in the **entity directory** (`$ENTITY_DIR`) by default, unless the command explicitly changes directory.
+**Guarantee:** Commands execute with `$PWD = $ENTITY_DIR` (the entity's home directory) at startup. The dispatcher **MUST** change directory to the entity directory before sourcing `.env` files or executing `command.sh`.
 
 ```bash
-# Command executes in /home/koad/.vesta
-cd ~/.vesta
-command.sh
+# Dispatcher implementation
+ENTITY_DIR="/home/koad/$ENTITY"
+cd "$ENTITY_DIR" || { echo "Cannot cd to $ENTITY_DIR"; exit 1; }
+# Now: $PWD == $ENTITY_DIR == /home/koad/.vesta (or equivalent)
+
+# command.sh executes with this guarantee
+source ~/.vesta/commands/my-command/.env 2>/dev/null
+./command.sh arg1 arg2
 ```
+
+Commands can change directory if needed, but they start in `$ENTITY_DIR`.
+
+### 5.1b Environment Variable Scope (Subcommands)
+
+When a command executes a subcommand or subprocess, the environment is inherited. Parent entity and framework variables remain available in subcommands:
+
+| Variable Scope | Available in Subcommand? | Notes |
+|---|---|---|
+| Framework (`~/.koad-io/.env`) | Yes | Inherited from Layer 1 |
+| Parent Entity (`~/.entityname/.env`) | Yes | Inherited from Layer 2 |
+| Command-local (`~/.entityname/commands/<cmd>/.env`) | Yes | Inherited from Layer 3, highest priority |
+| Ad-hoc exports | Yes | Inherited from parent shell context |
+| Child command `.env` | Yes | Only if child is invoked as subcommand with its own `.env` |
+
+**Example:** If `command.sh` launches a subcommand `./subcommand.sh`:
+
+```bash
+# Parent: ~/.vesta/commands/build/.env
+BUILD_TOOL=make
+BUILD_DIR=/tmp/build
+
+# Child: ~/.vesta/commands/build/docker/command.sh
+#!/usr/bin/env bash
+# Has access to:
+echo "$BUILD_TOOL"  # Available (inherited from parent)
+echo "$BUILD_DIR"   # Available (inherited from parent)
+# Plus any variables in ~/.vesta/commands/build/docker/.env
+```
+
+This enables hierarchical configuration without re-sourcing parent `.env` files.
 
 ### 5.2 Standard Streams
 

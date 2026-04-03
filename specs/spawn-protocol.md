@@ -41,15 +41,60 @@ description: "Canonical protocol for spawning entities as sovereign child proces
 - Entity X is koad (root authority), OR
 - Entity X is explicitly delegated spawn authority via trust bond from Y's grantor
 
+**Trust Bond File Format:**
+
+Trust bonds are Markdown files with YAML frontmatter (`~/.entityname/trust/bonds/target-to-entity.md`):
+
+```yaml
+---
+grantor: juno
+grantee: vesta
+status: ACTIVE  # ACTIVE, REVOKED, EXPIRED
+permissions:
+  spawn: true
+  read: true
+  write: false
+scope: full     # full, limited, task, audit
+issued_date: 2026-04-01
+expires_date: null  # null = no expiration
+---
+
+# Optional: human-readable terms
+This bond grants vesta the authority to spawn juno for protocol audits.
+```
+
+**Field specifications:**
+- `grantor` — Entity that issued this bond (must match entity's self-trust records)
+- `grantee` — Entity being granted authority (the spawner)
+- `status` — ACTIVE, REVOKED, or EXPIRED; spawn only proceeds if ACTIVE
+- `permissions.spawn` — Boolean; must be `true` for spawn to be allowed
+- `scope` — Authority scope: `full` (no restrictions), `limited` (see conditions), `task` (specific task only), `audit` (read-only)
+- `issued_date` — ISO8601 date
+- `expires_date` — ISO8601 date or `null` (never expires)
+
 **Verification:**
 ```bash
 # Example: Can vesta spawn juno?
 # Check if vesta holds a trust bond authorized to spawn juno
 
-SPAWN_AUTHORITY=$(jq -r '.permissions.spawn' ~/.vesta/trust/bonds/juno-to-vesta.md)
-if [[ "$SPAWN_AUTHORITY" != "granted" ]]; then
-  echo "Error: vesta is not authorized to spawn juno" >&2
+BOND_FILE="$HOME/.vesta/trust/bonds/juno-to-vesta.md"
+if [[ ! -f "$BOND_FILE" ]]; then
+  echo "Error: vesta has no trust bond from juno" >&2
   exit 73  # EX_CANTCREAT
+fi
+
+# Extract status from YAML frontmatter
+BOND_STATUS=$(grep "^status:" "$BOND_FILE" | head -1 | cut -d' ' -f2)
+if [[ "$BOND_STATUS" != "ACTIVE" ]]; then
+  echo "Error: bond status is $BOND_STATUS (required: ACTIVE)" >&2
+  exit 73
+fi
+
+# Extract spawn permission from YAML frontmatter
+SPAWN_PERM=$(grep "^  spawn:" "$BOND_FILE" | head -1 | awk '{print $NF}')
+if [[ "$SPAWN_PERM" != "true" ]]; then
+  echo "Error: spawn permission is $SPAWN_PERM (required: true)" >&2
+  exit 73
 fi
 ```
 
@@ -105,17 +150,31 @@ fi
 **Exit code:** 1 (entity not found)
 
 **Step 2: Trust Bond Verification**
+
+See section 2.1 for trust bond file format (YAML frontmatter, `.md` extension).
+
 ```bash
-BOND_FILE="~/$PARENT_ENTITY/trust/bonds/${CHILD_ENTITY}-to-${PARENT_ENTITY}.md"
+# Bond file: ~/.parent/trust/bonds/child-to-parent.md
+PARENT_ENTITY="${ENTITY:-koad}"
+CHILD_ENTITY="$1"
+
+BOND_FILE="$HOME/.$PARENT_ENTITY/trust/bonds/${CHILD_ENTITY}-to-${PARENT_ENTITY}.md"
 if [[ ! -f "$BOND_FILE" ]]; then
   echo "Error: no trust bond from $CHILD_ENTITY to $PARENT_ENTITY" >&2
   exit 73  # EX_CANTCREAT
 fi
 
-# Verify bond is ACTIVE (not REVOKED)
-BOND_STATUS=$(grep "^status:" "$BOND_FILE" | cut -d' ' -f2)
+# Verify bond is ACTIVE (extract from YAML frontmatter)
+BOND_STATUS=$(grep "^status:" "$BOND_FILE" | head -1 | cut -d' ' -f2)
 if [[ "$BOND_STATUS" != "ACTIVE" ]]; then
   echo "Error: trust bond status is $BOND_STATUS (required: ACTIVE)" >&2
+  exit 73
+fi
+
+# Verify spawn permission is granted (extract from YAML frontmatter)
+SPAWN_PERM=$(grep "^  spawn:" "$BOND_FILE" | head -1 | awk '{print $NF}')
+if [[ "$SPAWN_PERM" != "true" ]]; then
+  echo "Error: spawn permission is not granted in trust bond" >&2
   exit 73
 fi
 ```
@@ -140,7 +199,8 @@ fi
 
 **Step 4: Process Limits**
 ```bash
-# Check if entity is already running (optional; allow multiple)
+# Check if entity is already running
+# Maximum of 4 concurrent instances per entity (fixed, not configurable)
 EXISTING_PIDS=$(pgrep -f "claude.*$CHILD_ENTITY" | wc -l)
 MAX_INSTANCES=4
 if [[ $EXISTING_PIDS -ge $MAX_INSTANCES ]]; then
@@ -150,22 +210,38 @@ fi
 ```
 **Exit code:** 73 (resource limits exceeded)
 
+**Process Limit Details:**
+- **Maximum concurrent instances:** 4 per entity (fixed default, not configurable)
+- **Rationale:** Prevents resource exhaustion from runaway spawn loops
+- **Behavior:** If an entity already has 4 running processes, spawn is rejected
+- **Future:** If a limit higher than 4 is needed, the limit must be increased via spec change, not flag or environment variable
+
 ---
 
 ## 4. Environment Setup
 
 ### 4.1 Environment Inheritance
 
-A spawned entity **inherits** the parent's cascade environment (as defined in VESTA-SPEC-005) **except** for sensitive variables:
+A spawned entity **inherits** the parent's cascade environment (as defined in VESTA-SPEC-005 — Cascade Environment Protocol) **except** for sensitive variables.
 
-**Inherited (cascade loaded):**
+**Cascade Environment Loading (referenced from VESTA-SPEC-005):**
+
+The cascade load order is:
+1. Framework defaults (`~/.koad-io/.env`)
+2. Parent entity settings (`~/.parent-entity/.env`)
+3. Child entity settings (`~/.child-entity/.env`)
+4. Ad-hoc exports passed via `--env` flags
+
+Each layer is sourced with `set -a` to auto-export all variables, and earlier layers are overridden by later layers.
+
+**Inherited variables (in default inheritance mode):**
 - Framework defaults (`~/.koad-io/.env`)
 - Parent entity settings (`~/.parent-entity/.env`)
 - Child entity settings (`~/.child-entity/.env`)
 - Ad-hoc exports passed via `--env` flags
 
-**NOT inherited (isolation):**
-- `ENTITY_DIR` — Recomputed as `~/.child-entity`
+**NOT inherited (isolation — always reset to child values):**
+- `ENTITY_DIR` — Recomputed as `$HOME/.<child-entity>`
 - `ENTITY` — Recomputed as `<child-entity>`
 - Private keys (`*_KEY`, `*_PRIVATE`, `*_SECRET` variables)
 - Parent-specific credentials (GitHub tokens, API keys)
@@ -301,33 +377,50 @@ If the parent needs to stop the child gracefully:
 # Parent sends SIGTERM
 kill -TERM $CHILD_PID
 
-# Child has 10 seconds to:
+# Child has GRACE_PERIOD seconds to:
 # - Save state (commit to git)
 # - Flush buffers
 # - Clean up temporary files
 # - Call exit
 
-# After 10 seconds, if still running, parent sends SIGKILL
+# After GRACE_PERIOD seconds, if still running, parent sends SIGKILL
 kill -KILL $CHILD_PID
 ```
 
-**Signal handlers (child process):**
+**Grace Period (Timeout Configuration):**
 
-The child should register handlers for clean shutdown:
+The grace period before SIGKILL is **10 seconds** by default and **MUST** be this value for all spawned processes. This timeout is **NOT configurable** per spawn invocation — all entities receive the same grace period.
+
+```bash
+# Dispatch implementation
+GRACE_PERIOD=10  # Fixed, not configurable
+
+kill -TERM "$CHILD_PID"
+sleep "$GRACE_PERIOD"
+if ps -p "$CHILD_PID" > /dev/null 2>&1; then
+  kill -KILL "$CHILD_PID"
+fi
+```
+
+**Signal Handlers (Child Process — Recommended):**
+
+Spawned entities **SHOULD** register signal handlers for graceful shutdown. This is recommended but not mandatory:
 
 ```bash
 #!/usr/bin/env bash
 
-trap cleanup SIGTERM
+trap cleanup SIGTERM SIGINT
 
 cleanup() {
-  echo "Received SIGTERM, saving state..." >&2
+  echo "Received termination signal, saving state..." >&2
   cd ~/.vulcan && git add -A && git commit -m "graceful shutdown" || true
   exit 130  # 128 + SIGTERM(2)
 }
 
 # Main work...
 ```
+
+Entities without signal handlers will be force-killed after the grace period expires.
 
 ### 6.4 Timeout Handling
 
@@ -370,20 +463,38 @@ The `spawn` command itself exits with:
 | 127 | Not found | Child entity directory does not exist |
 | 128+ | Signal | Child killed by signal: 128 + signal_number |
 
-### 7.2 Diagnostics
+### 7.2 Diagnostics and Logging
 
-When spawn fails, the parent logs diagnostics:
+**Logging Requirement:** Diagnostic logging is **MANDATORY** for all spawn operations. Logging is enabled by default and cannot be disabled.
 
-```bash
-# Log file: ~/.koad-io/logs/spawn.log (if enabled)
+**Log Location:** `~/.koad-io/logs/spawn.log` (created if it does not exist)
 
-[2026-04-03T14:23:45Z] spawn vulcan "build" --timeout=60
-[2026-04-03T14:23:46Z]   PID=12345, working_directory=/home/koad/.vulcan
-[2026-04-03T14:23:50Z]   TASK START: vulcan received prompt
-[2026-04-03T14:24:30Z]   WORKING: 45 seconds elapsed
-[2026-04-03T14:25:40Z]   ERROR: child process exited with code 1
-[2026-04-03T14:25:41Z]   DIAGNOSIS: check ~/.vulcan for error messages or uncommitted changes
+**Log Format:** Newline-delimited plaintext, ISO8601 timestamps, tab-indented for event hierarchy:
+
 ```
+[2026-04-03T14:23:45.123Z] [vulcan] spawn initiated by: juno, prompt: "build" --timeout=60
+[2026-04-03T14:23:46.456Z] [vulcan]   pre-flight: entity_exists=true, bond_active=true, disk_space=500GB
+[2026-04-03T14:23:47.789Z] [vulcan]   launch: PID=12345, cwd=/home/koad/.vulcan
+[2026-04-03T14:23:50.012Z] [vulcan]   task_start: claude code session initialized
+[2026-04-03T14:24:30.345Z] [vulcan]   working: 43 seconds elapsed, no errors
+[2026-04-03T14:25:40.678Z] [vulcan]   error: exit_code=1
+[2026-04-03T14:25:41.901Z] [vulcan]   diagnosis: see ~/.vulcan/.claude-code/logs for stderr
+[2026-04-03T14:25:42.234Z] [vulcan]   complete: total_runtime=56s, exit_code=1
+```
+
+**Logged Events:**
+- Spawn initiation (entity, parent, prompt, options)
+- Pre-flight check results (all 4 steps, pass/fail)
+- Launch (PID, cwd, environment inherited/isolated)
+- Task start (Claude Code session ready)
+- Progress (elapsed time, if available)
+- Errors (exit code, signal, timeout)
+- Completion (total runtime, final exit code)
+
+**Log Retention:**
+- Logs are appended to the file indefinitely (no automatic rotation)
+- Individual entities may prune their own spawn logs (no framework rotation)
+- Logs are world-readable within `~/.koad-io/` permissions
 
 ### 7.3 Retry Logic
 
@@ -420,12 +531,58 @@ If the child entity is under **containment** (per VESTA-SPEC-CONTAINMENT), spawn
 | **Isolate** | No | Child is isolated; cannot communicate |
 | **Revoke** | No | Child's authority is revoked; cannot spawn |
 
+**Containment Status File Format:**
+
+Containment status is stored in `~/.koad-io/containment/${ENTITY_NAME}.status` as a plain text file with one field per line:
+
+```
+level: Observe
+reason: Protocol audit in progress
+issued_by: argus
+issued_date: 2026-04-03
+expires_date: 2026-04-10
+notes: Monitor VESTA-SPEC-* compliance
+```
+
+**Field specifications:**
+- `level` — `Observe`, `Pause`, `Isolate`, or `Revoke` (case-sensitive)
+- `reason` — Human-readable reason for containment
+- `issued_by` — Entity that issued the containment order
+- `issued_date` — ISO8601 date when containment began
+- `expires_date` — ISO8601 date when containment expires, or `null`/empty (indefinite)
+- `notes` — Optional additional context
+
+**Valid examples:**
+
+```
+# Observe level (monitoring)
+level: Observe
+reason: Security audit
+issued_by: vesta
+issued_date: 2026-04-03
+
+# Pause level (no spawn, no processes)
+level: Pause
+reason: Runaway resource consumption detected
+issued_by: juno
+issued_date: 2026-04-03
+expires_date: 2026-04-04
+
+# Revoke level (complete shutdown)
+level: Revoke
+reason: Authority violation
+issued_by: koad
+issued_date: 2026-04-03
+expires_date: null
+notes: Manual review required before reinstatement
+```
+
 **Check at launch:**
 ```bash
 # Before spawning, check child's containment status
 CONTAINMENT_FILE="~/.koad-io/containment/${CHILD_ENTITY}.status"
 if [[ -f "$CONTAINMENT_FILE" ]]; then
-  LEVEL=$(grep "^level:" "$CONTAINMENT_FILE" | cut -d' ' -f2)
+  LEVEL=$(grep "^level:" "$CONTAINMENT_FILE" | head -1 | cut -d' ' -f2)
   if [[ "$LEVEL" == "Pause" ]] || [[ "$LEVEL" == "Isolate" ]] || [[ "$LEVEL" == "Revoke" ]]; then
     echo "Error: entity '$CHILD_ENTITY' is under $LEVEL containment; spawn denied" >&2
     exit 73
@@ -554,8 +711,14 @@ $ juno spawn process vulcan "build" --isolated
 | Communication | Full session (Claude Code) | Stdin/stdout/exit code |
 | Lifetime | Minutes to hours | Seconds to minutes |
 
+### Cascade Environment (VESTA-SPEC-005)
+Spawn uses the cascade environment protocol defined in VESTA-SPEC-005. Key differences from the Commands system:
+- In spawn, the child entity's identity (`ENTITY`, `ENTITY_DIR`) is recomputed to the child's values
+- Sensitive variables (private keys, credentials) are NOT inherited by default
+- With `--isolated` flag, only the child's own cascade layers are used (parent environment completely cleared)
+
 ### Versus Containment Abort (VESTA-SPEC-CONTAINMENT)
-Spawn respects containment levels. If a spawned entity misbehaves, it can be escalated to containment.
+Spawn respects containment levels. If a spawned entity misbehaves, it can be escalated to containment (see section 8.1).
 
 ---
 
