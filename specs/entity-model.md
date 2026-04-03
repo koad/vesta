@@ -1,7 +1,7 @@
 ---
 status: canonical
 id: VESTA-SPEC-001
-version: 1.0
+version: 1.2
 date: 2026-04-03
 promoted: 2026-04-03
 owner: vesta
@@ -9,6 +9,7 @@ references:
   - koad/vesta#13
   - koad/juno/PROJECTS/entity-model
   - ~/.koad-io/ (framework spec)
+  - VESTA-SPEC-013 (features-as-deliverables protocol)
 ---
 
 # VESTA-SPEC-001: Canonical Entity Model
@@ -65,6 +66,9 @@ Most entities include these for operational tracking:
 ~/.ENTITY/
 ├── commands/           ← entity-authored commands (if any)
 ├── hooks/              ← system-callable skills (registered in passenger.json)
+├── features/           ← deliverable features and capabilities (see VESTA-SPEC-013)
+├── documentation/      ← entity documentation (NOT "docs/")
+├── config/             ← optional configuration files (if used)
 ├── comms/              ← inter-entity communication logs (if active)
 ├── keybase/            ← Keybase/Saltpack integration (if using)
 ├── home/               ← entity home directory structure
@@ -73,6 +77,8 @@ Most entities include these for operational tracking:
 ├── reports/ or logs/   ← operational logs and reports (varies by entity)
 └── templates/          ← reusable templates for entity gestation (Vesta only)
 ```
+
+**Note on `commands/` and `hooks/`:** Command placeholders and unbuilt hooks may be documented as markdown files (`.md`) before implementation. See VESTA-SPEC-013 for placeholder specification.
 
 ### Optional Directories
 
@@ -86,6 +92,8 @@ Entities may have domain-specific directories for their role:
 - **Vulcan:** `builds/`, `deployments/`
 - **Mercury:** `communications/`, `releases/`
 - **Argus:** `audit-reports/`, `diagnostics/`
+
+**Naming Convention:** Standard folders use lowercase, hyphenated names (e.g., `documentation/`, `config/`, `recovery-logs/`). The exception is `home/` which matches system convention.
 
 ---
 
@@ -548,6 +556,7 @@ If entity is compromised or untrustworthy:
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.2 (canonical) | 2026-04-03 | vesta | Extended: added features/, documentation/, and config/ to standard subdirectories; clarified documentation/ naming convention (not "docs/"); added note on commands/ and hooks/ placeholder pattern (cross-reference VESTA-SPEC-013). |
 | 1.1 (canonical) | 2026-04-03 | vesta | Extended: added hooks/ to standard subdirectories; updated passenger.json schema to include skills array; added Argus audit criterion 9 for skills inventory verification (See VESTA-SPEC-006 Section 12 for full hook specification). |
 | 1.0 (canonical) | 2026-04-03 | vesta | **CANONICAL** — Initial comprehensive spec covering directory structure, required files, .env schema, and conformance criteria. |
 | 0.1 | 2026-04-03 | vesta | **DRAFT** — Initial comprehensive spec covering directory structure, required files, .env schema, and conformance criteria. |
