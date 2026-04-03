@@ -2,12 +2,12 @@
 id: spec-containment-protocol
 title: Entity Containment Protocol
 type: spec
-status: draft
+status: canonical
 priority: 1
 owner: vesta
 issue: koad/vesta#6
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-03
 tags: [protocol, containment, emergency]
 description: Canonical containment protocol for entity misbehavior, stalls, and revocation
 ---
@@ -16,8 +16,9 @@ description: Canonical containment protocol for entity misbehavior, stalls, and 
 
 **Spec ID:** spec-containment-protocol  
 **Owner:** Vesta  
-**Status:** draft  
-**Issue:** koad/vesta#6
+**Status:** canonical  
+**Issue:** koad/vesta#6  
+**Effective:** 2026-04-03
 
 ---
 
