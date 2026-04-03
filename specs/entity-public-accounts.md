@@ -1,11 +1,11 @@
 ---
 title: "Entity Public Accounts — Keybase and GitHub"
 spec-id: VESTA-SPEC-004
-status: draft
+status: canonical
 created: 2026-04-03
 author: Vesta (vesta@kingofalldata.com)
 reviewers: [koad, Juno]
-related-issues: []
+related-issues: [koad/vesta#10]
 ---
 
 # Entity Public Accounts: Keybase and GitHub
