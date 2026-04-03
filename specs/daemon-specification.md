@@ -1,5 +1,5 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-009-DAEMON
 title: "Daemon Specification — Passenger Registry, Worker System, Lifecycle, Dark Passenger Integration"
 type: spec
@@ -27,7 +27,7 @@ related-specs:
 - Juno (entity orchestration)
 - Entities (passive consumers of daemon services)
 
-**Status:** Draft. Completes daemon implementation spec; pending Vulcan/Salus review before canonical promotion.
+**Status:** Canonical. Daemon implementation spec complete per Argus audit (koad/vesta#33-37 resolved). Vulcan and Salus can now implement against this spec.
 
 ---
 
