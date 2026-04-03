@@ -1,10 +1,11 @@
 ---
-status: draft
-id: spec-inter-entity-comms
+status: canonical
+id: VESTA-SPEC-008
 title: "Inter-Entity Communications Protocol"
 type: spec
 created: 2026-04-03
 updated: 2026-04-03
+promoted: 2026-04-03
 owner: vesta
 description: "Canonical protocol for secure, authenticated communication between entities in the koad:io ecosystem"
 ---
@@ -46,57 +47,22 @@ DATA_ENDPOINT="wss://entity.internal:8444"
 
 The dispatcher loads entity environments (section 2, CLI execution model), making endpoints available to commands that need to reach other entities.
 
-## 3. Certificate Architecture
+## 3. Public Key Infrastructure (Phase 2 — Deferred)
 
-### Public Key Infrastructure
+**Note:** This section describes the intended PKI architecture for inter-entity TLS channels. Implementation is deferred to VESTA-SPEC-024 (Public Key Distribution & Certificate Management). 
 
-Vesta maintains the public key distribution system:
+**Current Status (Phase 1):** The control channel operates over TLS with endpoint discovery via cascade environment (`CONTROL_ENDPOINT`, `DATA_ENDPOINT`). Mutual authentication is achieved via:
+- Sender signature verification using trust bond public keys (Section 6, Trust Bonds)
+- TLS transport security
+- Request timestamp validation (Section 4, prevents replay)
 
-```
-~/.vesta/
-  ├── id/
-  │   ├── ssl/
-  │   │   ├── master-curve.pem           (Vesta private key - entity authority)
-  │   │   ├── master-curve-parameters.pem (public params)
-  │   │   └── dhparam-*.pem               (forward secrecy params)
-  │   └── signing/
-  │       └── [identity keys for signing trust bonds]
-  │
-  ~/.{entity}/
-    ├── id/
-    │   ├── ssl/
-    │   │   ├── entity-cert.pem           (entity's TLS certificate)
-    │   │   ├── entity-key.pem            (gitignored: private key)
-    │   │   └── chain.pem                 (issuer chain for validation)
-    │   └── ...
-```
+**Phase 2 will specify:**
+- Vesta-issued entity certificates (master-curve PKI)
+- Certificate distribution registry at `~/.vesta/entities/{entity}/cert.pem`
+- Automatic certificate renewal and rotation
+- Certificate pinning and revocation mechanics
 
-### Certificate Issuance
-
-Vesta issues entity certificates during gestation:
-
-1. Entity requests CSR (Certificate Signing Request)
-2. Vesta validates trust bond
-3. Vesta signs certificate with `master-curve.pem`
-4. Certificate is installed at `~/.{entity}/id/ssl/entity-cert.pem`
-5. Chain is distributed to all entities for validation
-
-Each certificate includes:
-
-- **Subject**: Entity name and identifier
-- **Public Key**: Entity's TLS public key
-- **SANs** (Subject Alternative Names): All known endpoints (hostnames, IPs)
-- **Authority**: Signed by Vesta's master key
-- **Validity**: 1 year (renewal 30 days before expiry)
-
-### Certificate Validation
-
-When entity A connects to entity B:
-
-1. A loads B's certificate from `~/.vesta/entities/{b}/cert.pem` (Vesta-maintained registry)
-2. A validates chain against `~/.vesta/id/ssl/master-curve-parameters.pem`
-3. A validates SANs against the endpoint being used
-4. Connection proceeds only if all checks pass
+For now, entities should configure TLS endpoints in the cascade environment and rely on signed request headers for authentication. Phase 2 will add certificate validation as an additional layer.
 
 ## 4. Control Channel (REST + Signed Headers)
 
@@ -365,7 +331,9 @@ Data streams that are interrupted mid-transfer:
 
 ## Status
 
-**Draft** — Specification complete, pending review by affected entities (Juno, Vulcan, Salus).
+**Canonical** (promoted 2026-04-03). All entities must implement inter-entity control channels (REST + signed headers) by 2026-04-17. Data channels (WebSocket) are optional for Phase 1. Phase 2 PKI deferred to VESTA-SPEC-024.
+
+File issues on koad/vesta to propose amendments or report implementation gaps.
 
 ## References
 
