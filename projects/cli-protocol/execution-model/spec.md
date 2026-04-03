@@ -2,10 +2,10 @@
 id: spec-execution-model
 title: "Execution Model Specification"
 type: spec
-status: draft
+status: canonical
 priority: 1
 created: 2026-04-02
-updated: 2026-04-02
+updated: 2026-04-03
 owner: vesta
 description: "Canonical definition of CLI wrapper contract, environment loading, command resolution, hook protocol, and invocation flow"
 ---
