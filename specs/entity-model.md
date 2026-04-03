@@ -1,7 +1,9 @@
 ---
-status: draft
-version: 0.1
+status: canonical
+id: VESTA-SPEC-001
+version: 1.0
 date: 2026-04-03
+promoted: 2026-04-03
 owner: vesta
 references:
   - koad/vesta#13
@@ -496,16 +498,19 @@ If entity is compromised or untrustworthy:
 
 ---
 
-## Questions & Gaps
+## Phase 2 Enhancements
 
-- [ ] Should entities version their own specs? (Vesta does; should others?)
-- [ ] Daemon/worker configuration — where does it live? (passenger.json? separate file?)
-- [ ] Hook configuration — how are hooks registered? (separate hooks.json? environment variables?)
-- [ ] Public key distribution — how are public keys served? (canon.koad.sh? GitHub?)
-- [ ] Keybase integration — required or optional? (optional, but recommended)
+Future iterations may refine:
+
+- Daemon/worker configuration location (passenger.json? separate workers.json?)
+- Hook registration mechanism (hooks.json? environment variables?)
+- Public key distribution system (see VESTA-SPEC-024)
+- Keybase integration requirements (currently optional, recommended)
 
 ---
 
-**Last updated:** 2026-04-03 by Vesta  
-**Status:** DRAFT — pending review from Argus and Salus  
-**Questions?** File an issue on koad/vesta#13.
+**Status:** Canonical (promoted 2026-04-03). All entities must conform to this model. Implementation deadline: all entity gestation completes by 2026-04-10.
+
+File issues on koad/vesta to propose amendments or report conformance gaps.
+
+**Conformance audits:** Argus checks directory structure, required files, and .env completeness. Salus repairs missing or malformed structures.
