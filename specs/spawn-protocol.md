@@ -1,5 +1,5 @@
 ---
-status: review
+status: canonical
 id: VESTA-SPEC-008
 title: "Spawn Protocol — Entity Process Launch, Isolation, and Lifecycle"
 type: spec
@@ -797,7 +797,7 @@ claude . --prompt "$PROMPT"  # Literal string, no interpretation
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 (draft) | 2026-04-03 | Initial spec: authority model, launch mechanism, environment setup, lifecycle, error handling, containment integration |
+| 1.0 (canonical) | 2026-04-03 | Initial spec: authority model, launch mechanism, environment setup, lifecycle, error handling, containment integration |
 
 ---
 

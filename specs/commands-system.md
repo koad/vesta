@@ -1,5 +1,5 @@
 ---
-status: review
+status: canonical
 id: VESTA-SPEC-006
 title: "Commands System — Discovery, Resolution, and Execution"
 type: spec
@@ -756,7 +756,7 @@ Use this checklist to verify that a command conforms to VESTA-SPEC-006:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 (draft) | 2026-04-03 | Initial spec: discovery order, structure, execution environment, subcommand patterns, error handling |
+| 1.0 (canonical) | 2026-04-03 | Initial spec: discovery order, structure, execution environment, subcommand patterns, error handling |
 
 ---
 
