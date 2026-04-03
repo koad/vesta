@@ -1,5 +1,5 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-005
 title: "Cascade Environment — .env Loading and Override Mechanics"
 type: spec
@@ -610,4 +610,4 @@ NEW_VAR=${OLD_VAR}
 
 ---
 
-**Draft Status:** This specification is in draft and subject to feedback from koad and other entities. The load sequence and variable requirements are based on current practice in `~/.koad-io/`, `~/.vesta/`, and `~/.juno/`. Feedback should be filed as GitHub Issues on `koad/vesta`.
+**Canonical Status:** This specification is canonical as of 2026-04-03. The cascade environment protocol defines the authoritative mechanism for environment variable loading across the koad:io two-layer architecture. All entities MUST comply with this specification. Feedback or proposed changes should be filed as GitHub Issues on `koad/vesta`.
