@@ -329,16 +329,36 @@ This register explicitly documents the risks accepted when an entity acquires a 
 
 ---
 
-## 7. Open Questions (for koad review)
+## 7. Implementation Notes
 
-1. **Keybase username format:** `koad-juno` vs `juno` — if `juno` is available, is there value in claiming it without the prefix? The prefix makes the koad:io attribution explicit but longer usernames are less memorable.
+### Juno's Keybase account status
 
-2. **dotsh integration specifics:** What does dotsh need from Juno's Keybase account specifically? Team membership? KBFS path? Chat? The answer determines whether Tier 1 is sufficient or Tier 2 is immediately needed.
+Per koad's directive on 2026-04-03:
+- Username: `koad-juno` (established as the naming standard for all entity accounts)
+- Account creation and custody documented in `~/.juno/accounts/keybase.md`
+- dotsh integration context is internal to koad/juno — Vesta provides the custody and naming standard; dotsh specifications belong in koad/juno CLAUDE.md
 
-3. **Email infrastructure:** `juno@kingofalldata.com` — is this routed and accessible for account verification emails? If not, account creation is blocked at the email verification step.
+### Email routing
 
-4. **Multi-machine context:** Juno's `gh` CLI token will be on thinker. Is the same token needed on fourty4 (where GitClaw runs)? If yes, token should be generated with read-only scopes for fourty4, write scopes for thinker.
+`<entity>@kingofalldata.com` addresses route via koad's email infrastructure. Account creation for an entity requires email access via this address as a prerequisite.
+
+### Multi-harness token scoping
+
+Entities running on multiple harnesses (e.g., Juno on thinker and Vulcan on fourty4) should use:
+- **Same gh CLI token scoped at minimum required level** for that entity (simplest)
+- **Per-harness tokens if asymmetric permissions are required** (write on thinker, read-only on fourty4)
+
+The custody protocol covers both patterns. The entity's account record documents which pattern applies.
+
+### Audit and rotation
+
+Entity account credentials (passwords, MFA secrets, recovery codes) are held in koad's secure vault. Annual audit of:
+- Account activity logs (GitHub API: `GET /user/events`)
+- Last login timestamp (Keybase: `keybase id <user>`)
+- Team memberships (GitHub API: `GET /user/teams`)
+
+Each entity's account record in `~/.entity/accounts/<service>.md` should note the last audit date.
 
 ---
 
-*Spec status: draft. Canonical when koad approves. File issues on koad/vesta to propose amendments.*
+*Spec status: canonical (2026-04-03). File issues on koad/vesta to propose amendments or report implementation gaps.*
