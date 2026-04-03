@@ -65,7 +65,7 @@ The framework layer contains system-wide defaults for the entire koad:io install
 PRIMARY_ENTITY=koad
 KOAD_IO_BIND_IP=127.0.0.1
 KOAD_IO_HOME=/home/koad
-METEOR_PACKAGE_DIRS=/home/koad/.koad-io/packages
+METEOR_PACKAGE_DIRS=/home/koad/.koad-io/packages:/home/koad/.koad-io/extra-packages
 KOAD_IO_QUIET=0
 ```
 
@@ -198,7 +198,9 @@ The framework layer MUST define:
 | `PRIMARY_ENTITY` | Root entity (usually `koad`) | `koad` |
 | `KOAD_IO_HOME` | Framework installation directory | `/home/koad` |
 | `KOAD_IO_BIND_IP` | IP address for binding services | `127.0.0.1` or `0.0.0.0` |
-| `METEOR_PACKAGE_DIRS` | Package search paths | `/home/koad/.koad-io/packages` |
+| `METEOR_PACKAGE_DIRS` | Package search paths (use absolute paths) | `/home/koad/.koad-io/packages` |
+
+**IMPORTANT NOTE on `METEOR_PACKAGE_DIRS`:** Always use **absolute paths** (e.g., `/home/koad/.koad-io/packages`), NOT shell variable expansion like `$HOME`. Shell expansions fail in cron and systemd contexts where the environment is minimal. If multiple paths are needed, separate them with `:` and use full absolute paths.
 
 The framework layer MAY define:
 
@@ -332,11 +334,11 @@ For list variables (like `PATH` or `METEOR_PACKAGE_DIRS`), you can append or pre
 
 ```bash
 # Framework: METEOR_PACKAGE_DIRS=/home/koad/.koad-io/packages
-# Entity:    METEOR_PACKAGE_DIRS=/home/koad/.vulcan/packages:${METEOR_PACKAGE_DIRS}
+# Entity:    METEOR_PACKAGE_DIRS=/home/koad/.vulcan/packages:/home/koad/.koad-io/packages
 # Result:    METEOR_PACKAGE_DIRS=/home/koad/.vulcan/packages:/home/koad/.koad-io/packages
 ```
 
-Use `${VARNAME}` to reference the current value when appending or prepending.
+**For `METEOR_PACKAGE_DIRS` specifically:** Always list paths as absolute paths separated by `:`. Do not use `${VARNAME}` expansion or shell variables (e.g., `$HOME`), as these fail in cron and systemd environments. Each entity that extends package directories should list them explicitly.
 
 ## 7. Security Boundaries
 
