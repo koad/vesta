@@ -3,8 +3,6 @@
 # Fetches issues from all monitored entity repos and flags protocol-level issues
 # Usage: vesta audit-issues [--add-to-project]
 
-set -e
-
 REPOS=("koad/vesta" "koad/juno" "koad/vulcan")
 PROJECT_ID=5  # koad:io Protocol project
 ADD_TO_PROJECT=false
@@ -60,8 +58,8 @@ for repo in "${REPOS[@]}"; do
   # Fetch issues in table format (simpler parsing)
   issues_output=$(gh issue list --repo "$repo" --state open 2>/dev/null)
 
-  if [ -z "$issues_output" ]; then
-    echo "  (no open issues)"
+  if [ $? -ne 0 ] || [ -z "$issues_output" ]; then
+    echo "  (no open issues or not accessible)"
     continue
   fi
 
