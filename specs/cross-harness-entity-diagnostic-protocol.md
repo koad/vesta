@@ -750,6 +750,139 @@ Divergence: OpenCode claims to own fewer domains than interactive harness
 **Recommended Action**: Investigate opencode harness loading and identity mechanism
 ```
 
+### 7.3 Harness Memory Output
+
+**Purpose**: When Argus detects harness-specific quirks, limitations, or behavioral divergence during a cross-harness diagnostic, the findings are captured in a **harness memory file** and committed to the diagnosed entity's repository. This enables the entity to self-calibrate across harnesses at startup—it loads its own cross-harness self-knowledge rather than starting from zero in each session.
+
+### 7.3.1 Harness Memory File
+
+Each harness memory file captures:
+
+- **How this entity behaves in this specific harness** — operational patterns unique to this harness
+- **Known limitations** — tools unavailable, permission scopes restricted, capability gaps (e.g., "text-only, no file reads")
+- **Quirks affecting reliability** — observed behavioral oddities or edge cases (e.g., "model output formatting changes in this harness", "timeouts occur under X condition")
+- **Calibration notes** — how the entity should adjust expectations or behavior in this harness to maximize reliability
+
+#### File Format
+
+**Location**: `memories/harness-<harness_id>.md` in the entity's repository
+
+**Example filename**: `memories/harness-openclaw.md`
+
+**File Structure**:
+
+```markdown
+---
+type: harness-memory
+harness_id: openclaw
+harness_name: "OpenClaw"
+generated_by: argus
+diagnostic_run: xh-diag-2026-04-03-vesta-001
+created: 2026-04-03T14:30:00Z
+last_updated: 2026-04-03T14:30:00Z
+entity: vesta
+---
+
+# Harness Memory: OpenClaw
+
+## Overview
+
+This entity runs in OpenClaw (text-only, asynchronous messaging via port 44).
+This memory captures learned behavior patterns and calibration data to help the entity
+self-optimize in this harness.
+
+## Known Limitations
+
+- **No tool access**: Tools like `read`, `write`, `bash`, `glob`, `grep` are unavailable
+- **Text-only interface**: All communication via text messages; no structured output
+- **Asynchronous**: Response latency is higher than interactive harnesses (3-5s typical)
+- **Model version**: Uses `gpt-4-turbo` backend, not Claude; minor model-specific behavioral differences
+- **No file system access**: Entity cannot verify identity or role by reading canonical files
+
+## Behavioral Quirks
+
+- **Protocol knowledge incomplete**: Entity may not recall exact spec IDs (e.g., "VESTA-SPEC-001"); 
+  paraphrasing is accepted and expected in this harness
+- **Recent action dating**: Entity knowledge about "recent" actions may be delayed (last sync point: 2026-04-01)
+- **Trust bond references**: Entity cannot enumerate authorized spawn targets from `trust/bonds/` files;
+  knowledge is cached as of last update
+- **Model formatting**: When providing lists or structured responses, output may be more verbose or informal
+  than in other harnesses (no access to structured JSON output)
+
+## Calibration Notes
+
+- **Expectation adjustment**: Score identity/role probes primarily on knowledge accuracy, not verifiability
+- **Accepted variation**: Accept "recently" vs. exact dates; accept paraphrased spec references
+- **Degradation tolerance**: Health scores in this harness are expected to be 10-20% lower than primary harnesses;
+  this is acceptable and does not signal breakage
+- **Sync strategy**: If protocol changes occur, update this entity via a full sync command (VESTA-SPEC-008)
+  before running next diagnostic; cached knowledge may lag by 1-2 days
+
+## Recommendations
+
+1. Schedule next diagnostic in 14 days (vs. 30 for HEALTHY harnesses)
+2. If entity behavior diverges from this memory, update the memory immediately
+3. If new tool access becomes available in this harness, remove limiting quirks from this file
+```
+
+### 7.3.2 When to Generate Harness Memories
+
+Argus generates or updates a harness memory file in these cases:
+
+1. **Cross-harness diagnostic completes with divergence or quirks detected** — findings are captured before Argus exits
+2. **Harness-specific health <= 0.80** — memory explicitly documents limitations and expectations
+3. **First-time cross-harness diagnostic for a new harness** — establishes baseline behavior record
+4. **Behavioral changes detected across diagnostics** — memory is updated with new findings (append with timestamp)
+5. **New tool capabilities become available in a harness** — remove obsolete limitations from memory
+
+### 7.3.3 Harness Memory Commit and Persistence
+
+After generating a harness memory file, Argus:
+
+1. **Writes to entity repository**: Places file at `~/.entity/memories/harness-<harness_id>.md`
+2. **Commits to git**: Creates a commit in the entity's repository with message:
+   ```
+   harness: update memories for [harness_name] from diagnostic run [timestamp]
+   
+   Findings from cross-harness diagnostic (VESTA-SPEC-011):
+   - Health score: [score]%
+   - Consistency status: [status]
+   - Detected quirks/limitations: [brief list]
+   
+   Entity can now self-calibrate in this harness at startup.
+   
+   Diagnostic run: xh-diag-[timestamp]-[entity]
+   ```
+3. **Pushes to remote**: Ensures harness memory is available to all instances of the entity
+4. **Reports completion**: Includes in diagnostic report section 7.1 under "Metadata":
+   ```
+   Harness memory updates:
+   - harness-openclaw.md (updated 2026-04-03)
+   - harness-opencode.md (no changes)
+   ```
+
+### 7.3.4 Entity Consumption (Startup)
+
+At entity startup (VESTA-SPEC-PORTABILITY, Section 3), the entity:
+
+1. **Detects harness**: Identifies which harness it is running in (from environment, CLI flags, or runtime detection)
+2. **Loads corresponding memory**: Reads `memories/harness-<detected_harness_id>.md` if it exists
+3. **Applies calibration**: Adjusts startup behavior, tool expectations, and scoring thresholds based on memory
+4. **Logs applied memory**: Records in startup log that harness memory was loaded and applied
+
+Example entity startup behavior:
+
+```
+[startup] Detected harness: openclaw
+[startup] Loading harness memory: memories/harness-openclaw.md
+[startup] Applied harness memory:
+  - Tool access: [none]
+  - Expected health score: ~70% (acceptable for this harness)
+  - Model version: gpt-4-turbo
+  - Limitation: No file system access, scoring adjusted
+[startup] Ready in openclaw harness with calibrated expectations
+```
+
 ---
 
 ## 8. Integration with Argus Workflow
@@ -795,6 +928,7 @@ Argus must provide:
 - [ ] Consistency scoring across harnesses (Section 4)
 - [ ] Cross-harness report generation (Section 7)
 - [ ] Consistency divergence detection and alerting (Section 7.2)
+- [ ] Harness memory generation and commit (Section 7.3)
 - [ ] Severity escalation based on harness weight and consistency (Section 8.2)
 - [ ] Scheduling for multi-harness vs. single-harness entities (Section 8.1)
 
