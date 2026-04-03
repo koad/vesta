@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Vesta — interactive or prompt-driven
+# Usage: vesta                               → interactive Claude Code session
+#        PROMPT="review this spec" vesta     → non-interactive, identity + prompt
+#        echo "review this spec" | vesta     → non-interactive, stdin
 
-echo
-echo "juno hook: no arguments given, loading claude code..."
-echo
+IDENTITY="$HOME/.vesta/memories/001-identity.md"
 
-if [ -z "${ENTITY:-}" ]; then
-  echo "error: ENTITY not set. exiting."
-  exit 1
+PROMPT="${PROMPT:-}"
+if [ -z "$PROMPT" ] && [ ! -t 0 ]; then
+  PROMPT="$(cat)"
 fi
 
-source "$HOME/.koad-io/.env" || true
-source "$HOME/.$ENTITY/.env" || true
+cd "$HOME/.vesta"
 
-echo "entity: $ENTITY"
-echo "launching: claude . in $HOME/.$ENTITY/"
-echo
+if [ -n "$PROMPT" ]; then
+  exec opencode run --model opencode/big-pickle "$(cat "$IDENTITY")
 
-cd "$HOME/.$ENTITY/"
-exec claude . --model sonnet
+$PROMPT"
+else
+  exec claude . --model sonnet
+fi
