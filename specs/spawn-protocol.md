@@ -1,5 +1,5 @@
 ---
-status: draft
+status: review
 id: VESTA-SPEC-008
 title: "Spawn Protocol — Entity Process Launch, Isolation, and Lifecycle"
 type: spec

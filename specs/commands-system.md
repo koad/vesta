@@ -1,5 +1,5 @@
 ---
-status: draft
+status: review
 id: VESTA-SPEC-006
 title: "Commands System — Discovery, Resolution, and Execution"
 type: spec
