@@ -32,9 +32,10 @@
 
 On session open in `~/.vesta/`:
 1. `git pull` — sync with remote
-2. Check open GitHub Issues — what protocol gaps are pending?
-3. Load current spec state
-4. Report status
+2. Cross-entity pulls if reading from Juno, Vulcan, Argus etc: `cd ~/.{entity} && git pull` first (see VESTA-SPEC-006 §16)
+3. Check open GitHub Issues — what protocol gaps are pending?
+4. Load current spec state
+5. Report status
 
 ## Quality Bar
 
