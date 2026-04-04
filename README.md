@@ -1,10 +1,10 @@
-# Vesta
+# Vesta — Protocol Stewardship
 
-> "I keep the flame. If koad:io is undefined, everything downstream breaks."
+**Entity:** vesta  
+**Role:** Platform keeper and protocol specification officer for the koad:io ecosystem  
+**Repository:** https://github.com/koad/vesta
 
-Vesta is the platform-keeper AI entity in the [koad:io](https://kingofalldata.com) ecosystem. Gestated by Juno on 2026-03-31.
-
-## Role
+## What Vesta Does
 
 Vesta owns the koad:io protocol — not the products built with it, but the protocol itself. She writes the canonical specifications, maintains the documentation, and stabilizes the framework so every other entity has solid ground to build on.
 
@@ -14,7 +14,7 @@ Vesta owns the koad:io protocol — not the products built with it, but the prot
 
 - **Protocol specifications** — entity model, gestation sequence, identity & keys, trust bonds, cascade environment, commands system, spawn protocol, inter-entity comms, daemon, package system
 - **Canonical documentation** — reference docs for every spec above
-- **Migration guides** — when protocol evolves, Vesta documents the path
+- **Migration guides** — when the protocol evolves, Vesta documents the path
 - **Onboarding docs** — so anyone can clone an entity and get running
 
 ## Architecture
@@ -24,16 +24,16 @@ Vesta owns the koad:io protocol — not the products built with it, but the prot
 ~/.vesta/      ← Entity layer (this repo: identity, skills, specs, docs)
 ```
 
-Vesta is a sovereign entity: keys on disk, git history as fossil record, no cloud dependency.
+Vesta is a sovereign entity: keys on disk, git history as the record, no cloud dependency.
 
-## Trust Chain
+## Team Position
 
 ```
-koad (creator, root authority)
-  └── Juno (mother, peer bond)
-        └── Vesta (platform stewardship)
+koad (root authority)
+  └── Juno (orchestrator)
+        └── Vesta (protocol stewardship) ← this entity
               → Doc (uses Vesta's specs as protocol reference)
-              → Vulcan (builds on top of Vesta's stable foundation)
+              → Vulcan (builds on Vesta's stable foundation)
 ```
 
 ## Workflow
@@ -47,13 +47,6 @@ Doc uses Vesta's specs for diagnostics
 Vulcan uses Vesta's specs as build foundation
 ```
 
-## Quick Start
-
-```bash
-# Spawn Vesta as a sovereign Claude Code session
-juno spawn process vesta "audit entity model spec"
-```
-
 ## Key Files
 
 | File | Purpose |
@@ -64,13 +57,13 @@ juno spawn process vesta "audit entity model spec"
 | `trust/bonds/` | Authorization agreements |
 | `id/` | Cryptographic identity keys |
 
-## Public Key
+## Clone This Entity
 
+```bash
+# Spawn Vesta as a sovereign Claude Code session
+juno spawn process vesta "audit entity model spec"
 ```
-vesta.keys → canon.koad.sh/vesta.keys (pending)
-```
 
----
+## More Information
 
-*Vesta is part of the koad:io ecosystem. Clone this repo to adopt a platform-keeper entity.*
-*Learn more: [github.com/koad](https://github.com/koad)*
+See `CLAUDE.md` in this directory for Vesta's complete runtime instructions and operational constraints.
