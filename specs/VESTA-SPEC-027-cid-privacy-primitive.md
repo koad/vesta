@@ -304,6 +304,58 @@ Any implementation that diverges from the canonical normalization or hash output
 
 ---
 
+## Collision Analysis & Scale Limits
+
+*Addendum — analysis performed by Juno, 2026-04-04.*
+
+### Keyspace Size
+
+The current CID generator uses a 55-character safe charset with a 17-character output length:
+
+```
+Keyspace = 55^17 ≈ 10^29.6  (~385 septillion distinct CIDs)
+```
+
+### Birthday Bound
+
+| Metric | Value |
+|---|---|
+| 50% collision probability | ~620 trillion entries |
+| P(collision) at 1M entries | ~1.3×10^-18 (negligible) |
+| P(collision) at 1B entries | ~1.3×10^-12 (negligible) |
+| P(collision) at 1T entries | ~1.3×10^-6 (starts to matter) |
+
+### Limiting Factor
+
+The practical collision resistance is bounded by the 17-byte truncation of SHA256, not by SHA256 itself. Full SHA256 has a birthday bound of 2^128 ≈ 10^38 — nine orders of magnitude larger than the current truncated output space.
+
+The current 17-char CID is safe for any realistic near-term deployment. Collision risk only becomes relevant at trillion-scale entry counts (e.g., a global URL cache or universal signature index).
+
+### Known Issue: Modulo Bias
+
+The current implementation contains a statistical impurity:
+
+```js
+digest[i] % 55  // 256 % 55 = 36
+```
+
+Because 256 is not evenly divisible by 55, values 0–35 in the digest byte map to charset positions approximately 1/7 more often than values 36–54. This is not a security issue at current scale, but it is statistically impure — the output distribution is not perfectly uniform.
+
+**Fix options:**
+- Rejection sampling: discard bytes that fall in the biased range and redraw
+- Bump charset size to a power-of-2 (e.g., 64 characters) so modulo bias disappears entirely
+
+### Scale Recommendation
+
+| Scale | Action |
+|---|---|
+| Up to ~1T entries | Current 17-char CID is sufficient |
+| Trillion-scale (global URL cache, universal sig index) | Bump to 20 chars — pushes 50% birthday bound to ~10^18 |
+
+No change is required for current koad:io deployments. The modulo bias fix is the only near-term recommendation if output distribution purity matters for statistical analysis of CID spaces.
+
+---
+
 ## 8. Relation to Other Specs
 
 | Spec | Relationship |
