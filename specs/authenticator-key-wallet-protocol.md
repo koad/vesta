@@ -13,6 +13,19 @@ applies-to: koad:io Authenticator app, all signing operations across the system
 
 Define the credential model, wallet structure, and signing UX for the koad:io Authenticator — a Meteor PWA (also native iOS/Android) that serves as the sovereign key wallet for the koad:io system.
 
+## Build Status
+
+**Not yet built.** `~/.koad-io/authenticator/` holds the scaffold, build configuration, and documentation — the intended structure for when assembly begins.
+
+**Foundation (existing, working):**
+- `~/.koad-io/packages/koad-io-accounts-core` — session management, QR device onboarding, consumable tokens, invitations, RBAC
+- `~/.koad-io/packages/koad-io-accounts-ui` — login templates, QR UI, session management UI
+- `~/.koad-io/packages/koad-io-accounts` — umbrella package (implies core + ui + accounts-base + roles)
+
+The authenticator assembles these packages into a mobile-first Meteor PWA with native iOS/Android builds, and extends them with the key wallet layer: cryptographic keys, trust bonds, ring tokens, TOTP. The packages already implement QR device onboarding (`authorize.session`, `enroll.device`, `gather.consumable`) and session management. The wallet layer is the extension.
+
+---
+
 ## The Wallet Model
 
 The authenticator is a **key wallet** — not a password manager, not just a TOTP app, not a single signing device. It holds multiple credential types and signs operations with the appropriate credential for what is being requested.
