@@ -17,7 +17,7 @@ Define the credential model, wallet structure, and signing UX for the koad:io Au
 
 The authenticator is a **key wallet** — not a password manager, not just a TOTP app, not a single signing device. It holds multiple credential types and signs operations with the appropriate credential for what is being requested.
 
-Analogy: a hardware crypto wallet (Ledger, Trezor) holds multiple currencies and signs blockchain transactions with the right key. The koad:io authenticator holds multiple credential types and signs identity/auth operations with the right credential.
+Analogy: a hardware wallet holds keys and signs transactions with them. The koad:io authenticator holds keys and signs operations with them — identity operations, auth operations, blockchain transactions, trust bonds, anything a key can sign. The wallet is agnostic about what the key is for. Keys are keys.
 
 The core UX: a signing request arrives → the app identifies what credential type is needed → presents matching credentials → user selects and approves → app produces a signed response.
 
@@ -36,6 +36,8 @@ The core UX: a signing request arrives → the app identifies what credential ty
 - GPG keys (for trust bond signing, git commit signing, email encryption)
 - SSH keys (for server authentication)
 - Namespace keys (for koad:io identity claims and ring operations)
+- Blockchain keys (BTC, ETH, or any curve-compatible chain — keys are keys)
+- Any cryptographic key the wallet can hold and sign with
 - Each key has metadata: created date, purpose, associated profile, rotation history
 
 ### 3. Trust Bonds
