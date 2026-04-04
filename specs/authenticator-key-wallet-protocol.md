@@ -1,17 +1,17 @@
 ---
 id: VESTA-SPEC-020
-title: koad:io Authenticator — Sovereign Key Wallet Protocol
+title: koad:io Authenticator — Sovereign Signing Protocol
 status: draft
 created: 2026-04-04
 author: Juno (from direct description by koad)
 applies-to: koad:io Authenticator app, all signing operations across the system
 ---
 
-# VESTA-SPEC-020: koad:io Authenticator — Sovereign Key Wallet Protocol
+# VESTA-SPEC-020: koad:io Authenticator — Sovereign Signing Protocol
 
 ## Purpose
 
-Define the credential model, wallet structure, and signing UX for the koad:io Authenticator — a Meteor PWA (also native iOS/Android) that serves as the sovereign key wallet for the koad:io system.
+Define the credential model, signing UX, and key ring structure for the koad:io Authenticator — a Meteor PWA (also native iOS/Android) that serves as the sovereign signing device for the koad:io system. Certificate of authenticity, issued cryptographically.
 
 ## Build Status
 
@@ -22,21 +22,23 @@ Define the credential model, wallet structure, and signing UX for the koad:io Au
 - `~/.koad-io/packages/koad-io-accounts-ui` — login templates, QR UI, session management UI
 - `~/.koad-io/packages/koad-io-accounts` — umbrella package (implies core + ui + accounts-base + roles)
 
-The authenticator assembles these packages into a mobile-first Meteor PWA with native iOS/Android builds, and extends them with the key wallet layer: cryptographic keys, trust bonds, ring tokens, TOTP. The packages already implement QR device onboarding (`authorize.session`, `enroll.device`, `gather.consumable`) and session management. The wallet layer is the extension.
+The authenticator assembles these packages into a mobile-first Meteor PWA with native iOS/Android builds, and extends them with the signing layer: cryptographic keys, trust bonds, ring tokens, TOTP. The packages already implement QR device onboarding (`authorize.session`, `enroll.device`, `gather.consumable`) and session management. The authenticator layer is the extension.
 
 ---
 
-## The Wallet Model
+## The Authenticator Model
 
-The authenticator is a **key wallet** — not a password manager, not just a TOTP app, not a single signing device. It holds multiple credential types and signs operations with the appropriate credential for what is being requested.
+The authenticator is a **certificate of authenticity issuer** — not a password manager, not just a TOTP app. It holds keys and produces signed proofs. Every output is a signature of authenticity: this device is genuine, this identity is genuine, this bond is genuine.
 
-Analogy: a hardware wallet holds keys and signs transactions with them. The koad:io authenticator holds keys and signs operations with them — identity operations, auth operations, blockchain transactions, trust bonds, anything a key can sign. The wallet is agnostic about what the key is for. Keys are keys.
+Like the Windows Certificate of Authenticity sticker — but cryptographic. Anyone can verify it. Nobody can fake it without your keys.
+
+Analogy: a hardware signing device holds keys and signs with them. The koad:io authenticator holds keys and signs operations — identity, auth, blockchain transactions, trust bonds, anything a key can sign. Agnostic about what the key is for. Keys are keys.
 
 The core UX: a signing request arrives → the app identifies what credential type is needed → presents matching credentials → user selects and approves → app produces a signed response.
 
 ---
 
-## Credential Types Held in the Wallet
+## Credential Types Held in the authenticator
 
 ### 1. TOTP (Time-Based One-Time Passwords)
 - Standard 6-digit rotating codes, RFC 6238 compatible
@@ -50,23 +52,23 @@ The core UX: a signing request arrives → the app identifies what credential ty
 - SSH keys (for server authentication)
 - Namespace keys (for koad:io identity claims and ring operations)
 - Blockchain keys (BTC, ETH, or any curve-compatible chain — keys are keys)
-- Any cryptographic key the wallet can hold and sign with
+- Any cryptographic key the authenticator can hold and sign with
 - Each key has metadata: created date, purpose, associated profile, rotation history
 
 ### 3. Trust Bonds
-- Bonds can be loaded into the wallet (as documents to sign or as signed credentials to present)
-- Wallet renders the bond in human-readable form before signing
-- User reviews scope, from/to, authorization level → approves → wallet signs
+- Bonds can be loaded into the authenticator (as documents to sign or as signed credentials to present)
+- authenticator renders the bond in human-readable form before signing
+- User reviews scope, from/to, authorization level → approves → authenticator signs
 - Signed bond (`.md` + `.md.asc`) is returned to requesting party
 
 ### 4. Ring Membership Tokens
 - Tokens issued by ring owners (via VESTA-SPEC-019 onboarding flow)
-- Wallet presents the appropriate ring token when requesting ring-gated resources
+- authenticator presents the appropriate ring token when requesting ring-gated resources
 - Token includes: ring owner identity, membership level, scope, issue date, expiry
 
 ### 5. Device Credentials
 - Credentials issued when a device was onboarded (VESTA-SPEC-019)
-- Wallet presents device credential to authenticate a session on that device
+- authenticator presents device credential to authenticate a session on that device
 - Enables re-authentication without re-scanning a QR
 
 ### 6. Auth Codes (General)
@@ -78,7 +80,7 @@ The core UX: a signing request arrives → the app identifies what credential ty
 
 ## The Merkle Key Ring
 
-The wallet does not hold isolated keys. The keys form a **signature chain** — a merkle tree of key operations.
+The authenticator does not hold isolated keys. The keys form a **signature chain** — a merkle tree of key operations.
 
 - Every key issuance is signed by the key above it in the chain
 - Every key rotation is signed by the key being rotated
@@ -144,9 +146,9 @@ The user sees only what's relevant. The app enforces that you can't accidentally
 
 ---
 
-## The Wallet UI Model
+## The authenticator UI Model
 
-The wallet is organized by credential type, not by chronology:
+The authenticator is organized by credential type, not by chronology:
 
 ```
 koad:io Authenticator
@@ -183,7 +185,7 @@ The authenticator is the sovereign replacement for:
 | Replaced Tool | What the Authenticator Provides Instead |
 |---|---|
 | Google Authenticator | TOTP (same standard, local seeds, no cloud) |
-| 1Password / Bitwarden | Key wallet (holds credentials, signs — not just fills) |
+| 1Password / Bitwarden | Signing device (holds credentials, signs — not just fills) |
 | GPG keychain GUI | Key management + signing UI |
 | SSH agent | SSH key storage + auth |
 | Keybase mobile | Key operations, signature chain, profile management |
@@ -212,7 +214,7 @@ QR-based flows (VESTA-SPEC-019) work offline — the response QR is displayed on
 ## Security Model
 
 - All credential storage is encrypted at rest using the device's secure enclave (iOS: Secure Enclave, Android: StrongBox/TEE)
-- The wallet master password / biometric is the local unlock — it never leaves the device
+- The authenticator master password / biometric is the local unlock — it never leaves the device
 - Private keys never leave the authenticator unencrypted
 - Signing happens on-device — the app receives a payload, signs it, returns the signature
 - No cloud backup of private keys (backup via sovereign paper key / shamir shares — separate spec)
@@ -222,21 +224,21 @@ QR-based flows (VESTA-SPEC-019) work offline — the response QR is displayed on
 ## Relation to Other Specs
 
 - **VESTA-SPEC-017 (Operator Identity Verification):** The authenticator is the primary tool for challenge-response verification — the QR challenge is resolved by scanning with the authenticator and approving
-- **VESTA-SPEC-018 (Dark Passenger Augmentation):** Extension credential for ring-gated augmentation packages is held in the wallet and presented automatically
+- **VESTA-SPEC-018 (Dark Passenger Augmentation):** Extension credential for ring-gated augmentation packages is held in the authenticator and presented automatically
 - **VESTA-SPEC-019 (Sovereign Device Onboarding):** Device onboarding QR flow is executed through the authenticator's scanning interface
 - **Trust Bond Protocol:** Bonds are reviewed and signed through the authenticator's bond signing UI
-- **VESTA-SPEC-014 (Kingdom Peer Connectivity):** Ring membership tokens held in wallet are the credential for peer ring access
+- **VESTA-SPEC-014 (Kingdom Peer Connectivity):** Ring membership tokens held in authenticator are the credential for peer ring access
 
 ---
 
 ## Open Questions (for Vesta review)
 
 1. Multi-profile support: can one authenticator hold keys for multiple profiles (e.g., koad AND juno on the same phone)?
-2. Shared device: if koad and a family member share a tablet, how is wallet isolation handled?
-3. Wallet export/import: format for moving credentials to a new authenticator device (beyond the device-signs-device flow in SPEC-019)?
+2. Shared device: if koad and a family member share a tablet, how is authenticator isolation handled?
+3. authenticator export/import: format for moving credentials to a new authenticator device (beyond the device-signs-device flow in SPEC-019)?
 4. Bond signing UX: when a bond needs both parties' signatures, does the app handle the multi-step flow, or is each party's signing a separate action?
-5. Key generation: should the app support generating new keys directly, or should key generation always happen in the daemon/CLI and be imported into the wallet?
+5. Key generation: should the app support generating new keys directly, or should key generation always happen in the daemon/CLI and be imported into the authenticator?
 
 ---
 
-*Filed by Juno, 2026-04-04. Developed from direct description by koad of the authenticator as a key wallet — not a single signing device but a credential holder where the user picks the appropriate key for the operation. The framing: not a password manager (fills secrets), a key wallet (signs with proofs). Includes TOTP for external service compatibility, cryptographic keys, trust bonds, ring tokens, and device credentials — all under a single sovereign app.*
+*Filed by Juno, 2026-04-04. Developed from direct description by koad of the authenticator as a authenticator — not a single signing device but a credential holder where the user picks the appropriate key for the operation. The framing: not a password manager (fills secrets), a authenticator (signs with proofs). Includes TOTP for external service compatibility, cryptographic keys, trust bonds, ring tokens, and device credentials — all under a single sovereign app.*
