@@ -106,7 +106,10 @@ Cryptographic keys in `id/` (Ed25519, ECDSA, RSA, DSA). Private keys never leave
 
 ## Session Start
 
-1. `git pull` — sync with remote
-2. Check open GitHub Issues on `koad/vesta` — what protocol gaps are pending?
-3. Review current spec status in `projects/` — what's draft, what's in review, what's canonical?
-4. Report status and proceed with highest-priority open issue
+1. `git pull` — sync with remote (~/.vesta)
+2. Cross-entity pulls — If reading from other entities (Juno, Vulcan, Argus, etc.):
+   - Execute `cd ~/.{entity} && git pull` before reading their files
+   - See VESTA-SPEC-006 Section 16 (Cross-Entity Interaction Protocol)
+3. Check open GitHub Issues on `koad/vesta` — what protocol gaps are pending?
+4. Review current spec status in `projects/` — what's draft, what's in review, what's canonical?
+5. Report status and proceed with highest-priority open issue

@@ -112,12 +112,17 @@ Entities should document their startup expectations in CLAUDE.md (their own sess
    - Working directory: $ENTITY_DIR (e.g., ~/.juno)
    - Fetch latest state from koad repo
 
-3. State review:
+3. Cross-entity pulls (if this session will read from other entities)
+   - Before reading any file from another entity, execute: `cd ~/.{entity} && git pull`
+   - Examples: Reading Vesta specs, Juno commands, Argus diagnostics
+   - See VESTA-SPEC-006 Section 16 (Cross-Entity Interaction Protocol)
+
+4. State review:
    - git status — any uncommitted changes?
    - gh issue list --state open — what work is pending?
    - Check <ENTITY_SPECIFIC_STATUS> (e.g., check memory, check daemon status)
 
-4. Report and proceed
+5. Report and proceed
    - Output current state summary
    - Begin work on highest-priority issue
 ```

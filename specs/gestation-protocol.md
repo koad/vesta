@@ -506,11 +506,15 @@ Issues and work are tracked on GitHub: `github.com/koad/<entity>`
 
 ## Session Start
 
-1. `git pull` — Sync with remote
-2. Check open GitHub Issues — what priority work is pending?
-3. Review current state — what's in flight?
-4. Proceed with highest-priority open work
-5. Report progress via issue comments and commits
+1. `git pull` — Sync with remote (~/$ENTITY)
+2. Cross-entity pulls — If this session reads from another entity's directory:
+   - Execute `cd ~/.<entity> && git pull` before any reads
+   - Example: `cd ~/.vesta && git pull` before reading Vesta specs
+   - See VESTA-SPEC-006 Section 16
+3. Check open GitHub Issues — what priority work is pending?
+4. Review current state — what's in flight?
+5. Proceed with highest-priority open work
+6. Report progress via issue comments and commits
 EOF
 ```
 

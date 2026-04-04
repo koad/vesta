@@ -1055,6 +1055,116 @@ Use this checklist to verify that a command conforms to VESTA-SPEC-006:
 
 ---
 
+## 16. Cross-Entity Interaction Protocol
+
+### Overview
+
+When an entity reads files, executes commands, or references specifications from another entity's directory (e.g., Vulcan reading Vesta specs, Argus reading diagnostic records), it MUST synchronize that entity's repository before any read operations. This ensures the reading entity has the authoritative, up-to-date version of shared files and prevents relying on stale or locally-modified state.
+
+### Rule: Always Pull Before Cross-Entity Read
+
+**Canonical rule:** Before reading any file from another entity's directory (`~/.{entity}/`), execute:
+
+```bash
+cd ~/.{entity} && git pull
+```
+
+Replace `{entity}` with the target entity name (e.g., `vesta`, `juno`, `vulcan`, `salus`, `argus`).
+
+**Why this is required:**
+- **Canonical sources:** Entity specs, protocol documents, and trust bonds are canonical ONLY if they are synced from remote
+- **Prevents stale decisions:** Reading unsynced local changes could lead to decisions based on draft or rejected changes
+- **Audit trail:** A synced pull is verifiable; a local-only read is not
+- **Cross-harness consistency:** If entity A reads from entity B while entity B is running on a different machine, both must reference the same commit
+
+### Implementation
+
+#### In Commands
+
+A command that reads another entity's files should pull first:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Cross-entity read: sync source entity
+SOURCE_ENTITY="vesta"
+cd ~/.${SOURCE_ENTITY} && git pull
+
+# Now read the file
+SPEC_FILE="~/.${SOURCE_ENTITY}/specs/entity-model.md"
+cat "$SPEC_FILE"
+```
+
+#### In Hooks
+
+A hook that depends on another entity's state must pull first:
+
+```bash
+#!/usr/bin/env bash
+# Hook: validate-against-vesta-specs
+
+# Ensure Vesta's specs are current
+cd ~/.vesta && git pull
+
+# Now validate against specs
+for spec in ~/.vesta/specs/*.md; do
+  # Validation logic here
+done
+```
+
+#### In Claude Sessions
+
+When a Claude session (interactive or batch) needs to read cross-entity files:
+
+1. **Before reading** the foreign file, execute `cd ~/.{entity} && git pull`
+2. **Log the pull** for audit trail (optional but recommended)
+3. **Proceed with read**
+
+Example in a Claude session prompt or hook:
+
+```bash
+# Session start: if we're reading from another entity, sync it first
+if [ -n "${FOREIGN_ENTITY:-}" ]; then
+  cd ~/.${FOREIGN_ENTITY} && git pull
+fi
+```
+
+### Special Case: Self-Pulls
+
+An entity SHOULD also pull its own directory at session start (per VESTA-SPEC-012 step 2). This is not a cross-entity read, but maintains consistency:
+
+```bash
+# Session start: sync own state
+cd ${ENTITY_DIR} && git pull
+```
+
+### Exceptions
+
+The pull requirement does NOT apply to:
+
+- **Read-only inspection** of git objects (e.g., `git show ref:path/file.md`) — these are already immutable and don't require a pull
+- **Hardcoded values** from memory (e.g., "Vesta's canonical commit hash is abc123") — these are known constants, not reads
+- **Archived/historical snapshots** (e.g., "as of 2026-04-03, the spec said X") — these are explicitly dated, not current
+
+### Audit Trail
+
+When an entity pulls another entity's directory, it SHOULD log:
+
+```
+[CROSS-ENTITY-PULL] timestamp | source_entity=vesta | commit_hash=a1b2c3d | reader=vulcan
+```
+
+This forms a trail for Argus to audit cross-entity dependencies and detect stale-read incidents.
+
+### Related Specs
+
+- **VESTA-SPEC-012** (Entity Startup): Session start includes syncing own directory
+- **VESTA-SPEC-001** (Entity Model): Entity directories are canonical sources
+- **Koad/vesta#55**: Blocks until this rule is implemented across all entities
+
+---
+
 ## Appendix A: Hook Example — Vesta's `diagnose-entity` Hook
 
 **Path:** `~/.vesta/hooks/diagnose-entity.sh`
