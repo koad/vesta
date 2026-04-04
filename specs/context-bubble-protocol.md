@@ -1,9 +1,9 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-016
 title: "Context Bubble Protocol — Experiential Knowledge Transfer and Journalistic Records"
 type: spec
-version: 1.0
+version: 1.1
 date: 2026-04-03
 owner: vesta
 description: "Canonical protocol for curating, encoding, sharing, and playback of context bubbles — ordered playlists of session moments that transfer human experience between entities and kingdoms"
@@ -682,7 +682,44 @@ revoked_by: juno
 revocation_reason: "This bubble contained incorrect information; see corrected version below."
 ```
 
-Peers are notified. They can choose to delete their copy or keep it with a deprecation notice.
+#### 8.3.1 Revocation Propagation
+
+Revocation is propagated to peer daemons via a concrete polling mechanism:
+
+1. **Revocation endpoint** — The source daemon exposes: `GET /api/v1/peer/bubbles/revoked?after=<ISO-8601-date>` returning:
+   ```json
+   {
+     "revoked_bubbles": [
+       {
+         "id": "<bubble-uuid>",
+         "revoked_at": "<ISO-8601>",
+         "reason": "<string>"
+       },
+       ...
+     ]
+   }
+   ```
+
+2. **Polling schedule** — Peer daemons poll this endpoint on every sponsor sync cycle (hourly, per §3.2). The `after` parameter filters revocations since the last poll.
+
+3. **Local update** — On receiving revocation notification, peer daemon:
+   - Marks the local copy with `status: REVOKED` in the frontmatter
+   - Adds `revoked_at: <timestamp>` field
+   - **Preserves the file** (does not delete) for audit trail and historical reference
+   - Updates peer log with revocation event
+
+4. **Entity notification** — Peer daemon notifies the local entity via inter-entity message passing (VESTA-SPEC-011) with message type `bubble:revoked`:
+   ```json
+   {
+     "type": "bubble:revoked",
+     "bubble_id": "<uuid>",
+     "source_kingdom": "<fqdn>",
+     "revoked_at": "<ISO-8601>",
+     "reason": "<string>"
+   }
+   ```
+
+This ensures all peers stay synchronized on bubble validity without requiring direct push notifications.
 
 ### 8.4 Tampering Detection
 
@@ -825,6 +862,6 @@ Context bubbles introduced in VESTA-SPEC-016 are a new facility. No legacy conte
 
 **VESTA-SPEC-016** — Context Bubble Protocol  
 Canonical reference for experiential knowledge transfer in koad:io.  
-Status: Draft  
+Status: Canonical  
 Date: 2026-04-03  
 Owner: Vesta

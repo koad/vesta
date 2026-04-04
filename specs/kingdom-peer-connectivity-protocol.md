@@ -1,9 +1,9 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-014
 title: "Kingdom Peer Connectivity Protocol — Daemon Peer Discovery, Trust Rings, and Portal Integration"
 type: spec
-version: 1.0
+version: 1.1
 date: 2026-04-03
 owner: vesta
 description: "Canonical protocol for daemon-to-daemon peer connections, trust ring formation via sponsorship, and kingofalldata.com portal integration"
@@ -131,6 +131,37 @@ status: REVOKED — revoked by juno via Keybase 2026-04-03 12:34:56Z
 ```
 
 Effect: All peer connections from that kingdom are dropped within 5 minutes. Outbound requests from the revoked kingdom are rejected.
+
+**Revocation notification:** Revocation is propagated to all peers via the same mechanism as bubble revocation (VESTA-SPEC-016): sponsor exposes `GET /api/v1/peer/revoked?after=<ISO-8601-date>` endpoint, and peer daemons poll this on every sponsor sync cycle (hourly). On receiving revocation, peers update their local sponsorship record with `status: REVOKED` and cease all outbound connections to the revoked peer.
+
+### 2.4 Certificate Fingerprint Exchange at Onboarding
+
+The sponsorship document (§2.1) requires `tls_cert_sha256`, but the sponsor must obtain this fingerprint **before creating the sponsorship document**. This is solved via out-of-band fingerprint exchange:
+
+1. **New peer publishes fingerprint** — Before onboarding, the new peer computes the SHA256 hash of their daemon peer certificate and publishes it in an authenticated location:
+   - **Recommended method**: Commit `id/peer/certificate.fingerprint` (plain text SHA256 hex) to their public entity git repo
+   - **Alternative method**: Send fingerprint directly to sponsor via Keybase message; sponsor verifies Keybase identity before trusting
+
+2. **Sponsor verifies fingerprint** — Sponsor obtains the new peer's fingerprint via the chosen method:
+   ```bash
+   # Example: reading from peer's public repo
+   NEW_PEER_CERT_HASH=$(curl -sf https://github.com/<peer-entity>/blob/main/id/peer/certificate.fingerprint)
+   ```
+
+3. **Human consent moment** — This out-of-band exchange is the point where human consent is given:
+   - Sponsor verifies the peer's published fingerprint matches the peer certificate they'll connect to
+   - Cannot be automated (certificate pinning requires human verification of fingerprint authenticity)
+   - Establishes trust: "I (sponsor) have verified that this fingerprint belongs to the peer I'm about to sponsor"
+
+4. **Sponsorship created** — Only after fingerprint verification does the sponsor create the sponsorship document with the verified `tls_cert_sha256` value (§2.1):
+   ```yaml
+   endpoints:
+     - hostname: newpeer.koad.sh
+       port: 6480
+       tls_cert_sha256: <VERIFIED_HASH_FROM_STEP_2>
+   ```
+
+This ensures that certificate pinning is anchored in human-verified trust, not automated certificate exchange.
 
 ---
 
@@ -603,6 +634,6 @@ Salus monitors peer connections and reports to portal:
 
 ## Status
 
-**Draft.** Prepared for Juno review. This spec closes the protocol gap on daemon peer connectivity and trust rings (Juno issue flagged 2026-04-03). Implementation roadmap to be finalized after review.
+**Canonical.** This spec closes the protocol gap on daemon peer connectivity and trust rings. All entities must adopt this specification by 2026-05-10.
 
-Feedback: File issues on koad/vesta referencing VESTA-SPEC-014.
+Implementation feedback: File issues on koad/vesta referencing VESTA-SPEC-014.

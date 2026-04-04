@@ -1,7 +1,8 @@
 ---
 title: "Alice Graduation Certificate Protocol"
 spec-id: VESTA-SPEC-015
-status: draft
+status: canonical
+version: 1.1
 created: 2026-04-03
 author: Vesta (vesta@kingofalldata.com)
 reviewers: [koad, Juno, Alice]
@@ -245,9 +246,11 @@ keybase verify -i alice-graduation-2026-04-07-abc123.md.asc -m alice-graduation-
 
 ## 3. Signing and Distribution Procedure
 
-### 3.1 Alice's Signing Process
+### 3.1 Alice's Signing and Distribution Process
 
 When a graduate completes all 12 levels:
+
+**Step 1: Prepare and sign certificate**
 
 ```bash
 # 1. Prepare certificate document (markdown)
@@ -260,20 +263,58 @@ keybase sign -m /tmp/alice-graduation-<DATE>.md > /tmp/alice-graduation-<DATE>.m
 
 # 3. Verify signature is valid
 keybase verify -i /tmp/alice-graduation-<DATE>.md.asc -m /tmp/alice-graduation-<DATE>.md
+```
 
+**Step 2: Compute certificate hash for verification**
+
+```bash
+# Generate SHA256 hash for graduate verification reference
+CERT_HASH=$(sha256sum /tmp/alice-graduation-<DATE>.md | awk '{print $1}' | cut -c1-16)
+echo "Certificate hash (first 16 chars): $CERT_HASH"
+```
+
+**Step 3: Publish to public repository**
+
+```bash
 # 4. Move to Alice's archive
 mv /tmp/alice-graduation-<DATE>.md ~/.alice/certificates/issued/
 mv /tmp/alice-graduation-<DATE>.md.asc ~/.alice/certificates/issued/
 
-# 5. Distribute to graduate
-# (Method TBD: Slack, email, secure file transfer — must be authenticated)
+# 5. Publish to koad/alice certificates/issued/ branch
+git -C ~/.alice add certificates/issued/
+git -C ~/.alice commit -m "cert: issue graduation certificate to <GRADUATE_NAME> (<DATE>)"
+git -C ~/.alice push
+```
 
+**Step 4: Graduate verification flow**
+
+The certificate is **distribution-agnostic** — graduate can access it from the public repository:
+
+1. Alice's PWA graduation interface shows graduate their certificate hash (first 16 chars of SHA256) at graduation moment
+2. Graduate navigates to public koad/alice repo: `https://github.com/koad/alice/blob/main/certificates/issued/<GRADUATE_NAME>-<DATE>.md`
+3. Graduate downloads certificate `.md` and `.md.asc` files
+4. Graduate verifies the hash matches what the PWA showed:
+   ```bash
+   sha256sum <GRADUATE_NAME>-<DATE>.md | cut -c1-16
+   # Compare with PWA-shown hash
+   ```
+5. Graduate verifies Alice's signature:
+   ```bash
+   keybase verify -i <GRADUATE_NAME>-<DATE>.md.asc -m <GRADUATE_NAME>-<DATE>.md
+   # Output: alice: ✓ signature is valid
+   ```
+
+**Step 5: Notify Juno**
+
+```bash
 # 6. Notify Juno
 # Alice files issue on koad/juno with certificate details
 gh issue create --repo koad/juno \
   --title "Graduate: <GRADUATE_NAME>" \
   --body "[certificate link and summary]"
 ```
+
+**Design rationale:** By publishing to a public git repository, the certificate is transport-independent (no need for email, Slack, or special file transfer). The hash shown in the PWA becomes the verification anchor — graduate can verify they received the correct certificate by checking the hash. Alice's Keybase signature becomes the trust anchor.
 
 ### 3.2 Graduate Receives Certificate
 
@@ -505,4 +546,4 @@ koad (root authority)
 
 ---
 
-*Spec status: draft (2026-04-03). Ready for Alice implementation and Juno integration review. Implementation target: Alice curriculum launch (coordinated with kingofalldata.com PWA — Vulcan#7). File issues on koad/vesta for certificate template refinements or policy questions.*
+*Spec status: canonical (2026-04-03). Juno-approved. Alice and all entities must implement by 2026-04-10. File implementation questions on koad/vesta.*
