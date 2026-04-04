@@ -1034,6 +1034,60 @@ const WORKER_DEFAULTS = {
 };
 ```
 
+### 9.4 Daemon-Generated Cryptographic Keys
+
+When the daemon auto-generates keys on a new machine (e.g., kbpgp keys for signing), the key files **must be named after the machine's hostname**, not a generic name.
+
+**Canonical key naming:**
+```
+~/.entity/id/<hostname>.pub    ← public key (committed to repo)
+~/.entity/id/<hostname>        ← private key (NOT committed, gitignored)
+```
+
+**Examples for Vulcan across machines:**
+```
+~/.vulcan/id/wonderland.pub
+~/.vulcan/id/thinker.pub
+~/.vulcan/id/fourty4.pub
+```
+
+**Why:** Generic names (e.g., `kbpgp_key.pub`) conflict when the entity repo is shared across machines via git. Only one file can exist at a given path in the repo, so machines stomp each other's public keys. Hostname-named keys allow all machines to coexist.
+
+**Key aggregation:** The `entity.keys` bundle (committed to repo) aggregates all hostname-named public keys. Any entity verifying a signature must check it against the appropriate machine's key.
+
+**Gitignore rules for `id/` directory:**
+```gitignore
+# Private keys — never committed
+id/wonderland
+id/thinker
+id/fourty4
+# Pattern for all private keys (no extension = private)
+id/[a-z]*[^.][^pub]
+
+# Public keys — committed
+# id/*.pub  ← do NOT ignore
+```
+
+**Daemon key generation:**
+```bash
+# On first startup, if no key exists for this machine:
+HOSTNAME=$(hostname)
+if [[ ! -f "$ENTITY_DIR/id/$HOSTNAME" ]]; then
+  # Generate key pair
+  kbpgp.generate "$ENTITY_DIR/id/$HOSTNAME"  # or gpg, ed25519, etc.
+  # Commit public key
+  git -C "$ENTITY_DIR" add "id/$HOSTNAME.pub"
+  git -C "$ENTITY_DIR" commit -m "id: add $HOSTNAME public key"
+fi
+```
+
+**Trust bond integration:** When signing with a daemon-generated key, the trust bond or signed document must reference which host's key was used:
+```
+signed_with: id/wonderland.pub
+```
+
+This allows validators to know which public key to verify against.
+
 ---
 
 ## 10. Examples

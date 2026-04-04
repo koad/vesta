@@ -383,6 +383,66 @@ Verified by: Juno (2026-04-03 14:30:00Z)
 | `description` | string | Yes | Markdown text | What the bubble teaches |
 | `moments_count` | integer | Auto | Integer | Number of moments in bubble |
 
+### 4.4 Canonicalization
+
+This section defines the exact serialization rules for `content_hash` and the `signature` field so that two independent implementations produce identical results.
+
+#### Moment `content_hash`
+
+The `content_hash` is SHA256 over the moment's session transcript segment. Canonical serialization:
+
+1. **Source**: The raw session transcript text for the time window `[timestamp_start, timestamp_end]`
+2. **Encoding**: UTF-8
+3. **Line endings**: LF (`\n`) only — normalize CRLF to LF before hashing
+4. **Trailing whitespace**: Strip trailing whitespace from each line before hashing
+5. **Trailing newline**: Ensure exactly one trailing newline at end of content
+6. **Metadata excluded**: Only the session transcript content is hashed — not the moment's YAML metadata fields (session_id, timestamp_start, etc.)
+
+Canonical hash derivation:
+```bash
+# Normalize and hash
+cat session-transcript.txt \
+  | sed 's/\r//' \
+  | sed 's/[[:blank:]]*$//' \
+  | awk '{ print }' \
+  | (printf '%s\n' "$(cat)" | sha256sum | awk '{print $1}')
+```
+
+Or in a single pipeline:
+```bash
+python3 -c "
+import sys, hashlib
+content = open(sys.argv[1]).read()
+content = content.replace('\r\n', '\n').replace('\r', '\n')
+lines = [line.rstrip() for line in content.split('\n')]
+normalized = '\n'.join(lines).rstrip('\n') + '\n'
+print(hashlib.sha256(normalized.encode('utf-8')).hexdigest())
+" session-transcript.txt
+```
+
+#### Bubble `signature` Scope
+
+The `signature` field is a Saltpack signature (per VESTA-SPEC-011) over the **full markdown file content**, with the signature block itself excluded.
+
+**What is signed**: Everything in the `.md` file except the `signature:` line in the frontmatter. Specifically:
+
+1. Take the complete markdown file as UTF-8 bytes
+2. Remove the `signature: <value>` line from the YAML frontmatter entirely (the key and value, including the trailing newline)
+3. Normalize line endings to LF
+4. Sign the resulting bytes with the entity's Keybase key
+
+**Verification procedure**:
+```bash
+# Extract content to sign (remove signature line)
+grep -v '^signature:' bubble.md > bubble-unsigned.md
+
+# Verify saltpack signature
+keybase verify -i bubble.md.asc -m bubble-unsigned.md
+# → owner: ✓ signature is valid
+```
+
+**Why**: Signing the full file content (minus signature) means any edit to any field — topic, moments, timestamps, description — invalidates the signature. This is the intended read-only guarantee.
+
 ---
 
 ## 5. How Bubbles Are Consumed

@@ -646,11 +646,23 @@ printf '%s\n' "$USER_INPUT"   # Print literally, don't interpret
 
 ### 12.1 Overview
 
-While **commands** are human-facing operations invoked directly by users (e.g., `vesta commit self`), **hooks** are system-callable capabilities that Argus and other entities can inventory without understanding the entity's internals. Every skill an entity has should be a discoverable hook file in the `hooks/` directory.
+`commands/` and `hooks/` serve fundamentally different purposes and audiences:
 
-**Key distinction:**
-- **Commands**: User-facing, invoked by name, designed for direct interaction
-- **Hooks**: System-facing, registered in passenger.json, designed for automated discovery and delegation
+| | `commands/` | `hooks/` |
+|--|-------------|----------|
+| **For** | The user (operator) | The system / peer entities |
+| **Direction** | User reaches **in** | System / peer calls **out** |
+| **Discovery** | User browses, tabs-completes | Declared in `passenger.json`, inventoried by Argus |
+| **Purpose** | Shortcuts, cheatsheets, interactions | Trained responsibilities, specialized duties |
+| **Example** | `juno invoke entity` | `argus/hooks/diagnose-entity` |
+
+**`commands/`** is a tree of interactions designed to help the user do their work. The user reaches in — they know (or discover) the command name and call it directly.
+
+**`hooks/`** is the entity's trained responsibilities, callable by the system, daemon, or peer entities. The direction is reversed: the operation reaches out to the entity's hook. Hooks are not for users to browse — they are for the operation to invoke.
+
+**The hook is the training.** A hook file contains not just invocation logic but the entity's specialized context for that duty — the criteria, the approach, the philosophy. When `veritas/hooks/fact-check` fires, it carries Veritas's fact-checking discipline, not just a shell command. Enumerate the hooks and you enumerate what the entity *is*.
+
+**`passenger.json` `skills` array = entity identity expressed as triggers.** The skills array is canonical: it is how other entities and the daemon know what responsibilities this entity holds and how to invoke them.
 
 ### 12.2 Hooks Directory Structure
 
@@ -688,7 +700,7 @@ Examples:
 
 ### 12.4 Hook File Format
 
-Every hook is a Bash executable with required metadata:
+Every hook is a Bash executable with required metadata and optional training context. The training context block is what makes hooks more than shell scripts — it encodes the entity's specialized approach to the duty.
 
 ```bash
 #!/usr/bin/env bash
@@ -696,12 +708,27 @@ set -euo pipefail
 
 # Hook: diagnose-entity
 # Description: Audit entity state and report structural conformance
-# Input:  (none)
+# Caller: Argus (audit), Salus (pre-heal check), operator via argus audit
+# Input:  $1 = entity name (optional; defaults to $ENTITY)
 # Output: JSON object with diagnosis results
 # Exit:   0 for success, 1 for failure
 
+# --- Training Context ---
+# This hook carries Argus's diagnostic philosophy:
+# - Check structural conformance first (entity model), then functional state
+# - A missing required file is always a critical error, not a warning
+# - Report all findings; do not short-circuit on first error
+# - Output JSON so callers can parse without screen-scraping
+# --- End Training Context ---
+
 # Hook implementation
 ```
+
+**Rules for training context blocks:**
+- Placed between the metadata header and the implementation
+- Describes the entity's approach, criteria, and philosophy for this duty
+- Machine-readable by AI sessions as loaded context — keep it precise
+- Not required for simple utility hooks; required for judgment-requiring duties
 
 **Required metadata (comments):**
 

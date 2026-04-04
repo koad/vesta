@@ -59,8 +59,8 @@ related-specs:
 Koad (root sponsor)
   └── Juno (authorized-agent bond)
         ├── Free Tier Ring
-        │     └── User1 daemon (sponsor: koad)
-        │     └── User2 daemon (sponsor: koad)
+        │     └── User1 daemon (sponsor: juno)
+        │     └── User2 daemon (sponsor: juno)
         │
         ├── Basic Tier Ring
         │     └── Company1 daemon (sponsor: juno)
@@ -93,7 +93,7 @@ renewal: Annual (2027-04-03)
 tier: free | basic | pro | enterprise
 endpoints:
   - hostname: user1.koad.sh
-    port: 6379
+    port: 6480
     tls_cert_sha256: abc123...
 limits:
   max_data_per_day_mb: 100
@@ -109,7 +109,7 @@ limits:
 - **tier**: One of `free`, `basic`, `pro`, `enterprise`
 - **endpoints**: Array of daemon peer endpoints this kingdom exposes
   - `hostname`: FQDN or IP of the daemon peer port
-  - `port`: TCP port for peer connections (typically 6379)
+  - `port`: TCP port for peer connections (typically 6480)
   - `tls_cert_sha256`: SHA256 hash of the daemon's peer certificate (for pinning)
 - **limits**: Rate limits and capacity constraints for this tier
 
@@ -147,21 +147,21 @@ Each daemon has a peer discovery file: `~/.{entity}/peers.json`
   "tier": "basic",
   "my_endpoint": {
     "hostname": "user1.koad.sh",
-    "port": 6379,
+    "port": 6480,
     "tls_cert_sha256": "abc123..."
   },
   "sponsors": [
     {
       "entity": "juno",
       "hostname": "juno.koad.sh",
-      "port": 6379,
+      "port": 6480,
       "tls_cert_sha256": "def456..."
     }
   ],
   "peers": [
     {
       "hostname": "company1.koad.sh",
-      "port": 6379,
+      "port": 6480,
       "tier": "basic",
       "sponsor": "juno",
       "tls_cert_sha256": "ghi789...",
@@ -208,7 +208,7 @@ Each daemon has a peer discovery file: `~/.{entity}/peers.json`
     "peers": [
       {
         "hostname": "company2.koad.sh",
-        "port": 6379,
+        "port": 6480,
         "tier": "basic",
         "tls_cert_sha256": "xyz789..."
       }
@@ -318,7 +318,7 @@ Portal queries fetch data from this buffer; real-time endpoint can optionally st
 Each daemon must have a **peer certificate** distinct from entity certificates:
 
 - **File location**: `~/.{entity}/id/peer/certificate.pem` and `~/.{entity}/id/peer/private.key`
-- **Algorithm**: RSA 2048-bit or ECDP P-256 (prefer ECDP)
+- **Algorithm**: RSA 2048-bit or ECDSA P-256 (prefer ECDSA)
 - **CN (Common Name)**: `{daemon_hostname}`
 - **SAN (Subject Alt Name)**: `DNS:{hostname}`, `DNS:{hostname}.local`
 - **Valid for**: 1 year; 30-day renewal window before expiry
@@ -429,7 +429,7 @@ Portal does not cache or store kingdom data. Each query:
 Each daemon's peers.json determines what it can see. Visibility is **directed and sponsor-mediated**:
 
 **Free Tier Daemon:**
-- Can see: Sponsor (koad) daemon only
+- Can see: Sponsor (Juno) daemon only
 - Cannot initiate: Only receives data push from sponsor
 - Data access: Worker state only
 
@@ -518,7 +518,7 @@ A can query Juno for summary metrics of both.
 
 ```bash
 # ~/.{entity}/.env
-PEER_PORT=6379
+PEER_PORT=6480
 PEER_LISTEN_ADDR=0.0.0.0
 PEER_TLS_CERT=/home/koad/.{entity}/id/peer/certificate.pem
 PEER_TLS_KEY=/home/koad/.{entity}/id/peer/private.key

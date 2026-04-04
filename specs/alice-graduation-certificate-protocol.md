@@ -97,7 +97,7 @@ signature-verified-by: Juno, koad
 | `issued` | Date Alice signed the certificate (graduation date) |
 | `expires` | Always `never` — graduation doesn't expire, but can be revoked |
 | `certificate-hash` | SHA256(document content) first 16 chars for quick reference |
-| `signature-type` | Always `keybase/saltpack` (canonical signing protocol per VESTA-SPEC-015) |
+| `signature-type` | Always `keybase/saltpack` (canonical signing protocol per VESTA-SPEC-011) |
 | `signature-verified-by` | Who has verified this signature; initially Juno and koad |
 
 ### 2.3 Certificate Sections
@@ -234,7 +234,7 @@ keybase verify -i alice-graduation-2026-04-07-abc123.md.asc -m alice-graduation-
 
 **Alice's Keybase profile:** https://keybase.io/alice_koadio
 
-**Revocation:** To check if this certificate has been revoked, see Alice's certificate revocation list at ~/.alice/certificates/revoked/
+**Revocation:** To check if this certificate has been revoked, see Alice's published revocation list: `https://github.com/koad/alice/blob/main/certificates/revoked/REVOCATION_LIST.txt`
 
 ---
 
@@ -318,10 +318,14 @@ If signature verification fails: **REJECT** certificate. Stop.
 ### Step 2: Check Revocation
 
 ```bash
-# Check if Alice has revoked this certificate
-grep <CERTIFICATE_HASH> ~/.alice/certificates/revoked/ 2>/dev/null
+# Fetch Alice's published revocation list from her public repo
+# (machine-agnostic — works on thinker, fourty4, dotsh, etc.)
+REVOCATION_URL="https://raw.githubusercontent.com/koad/alice/main/certificates/revoked/REVOCATION_LIST.txt"
+curl -sf "$REVOCATION_URL" | grep -q "<CERTIFICATE_HASH>" && echo "REVOKED" || echo "VALID"
 # If found: REJECT certificate. Stop.
 ```
+
+**Note:** Alice maintains `certificates/revoked/REVOCATION_LIST.txt` in her public repo (committed + signed). This approach requires no daemon availability and is verifiable via git history. If the URL is unreachable (offline, network failure), treat as inconclusive and log the condition — do not silently accept.
 
 ### Step 3: Verify Content
 
@@ -391,10 +395,11 @@ git commit -m "trust: revoke certificate for <GRADUATE_NAME>"
 
 ### When Juno Learns of Revocation
 
-Juno checks revocation list at startup:
+Juno checks revocation list at startup (fetches from Alice's public repo):
 
 ```bash
-if grep <CERT_HASH> ~/.alice/certificates/revoked/REVOCATION_LIST.txt; then
+REVOCATION_URL="https://raw.githubusercontent.com/koad/alice/main/certificates/revoked/REVOCATION_LIST.txt"
+if curl -sf "$REVOCATION_URL" | grep -q "$CERT_HASH"; then
   REVOKED=true
   # Treat graduate as no longer authorized
   # May contact them to understand situation
@@ -434,7 +439,7 @@ fi
 
 - **VESTA-SPEC-007** (Trust Bond Protocol): Certificate follows trust bond format and signing protocol
 - **VESTA-SPEC-008** (Cross-Harness Identity): Graduate identity becomes new Keybase identity in koad:io
-- **VESTA-SPEC-015** (Keybase/Saltpack Protocol): Signature mechanism for certificates
+- **VESTA-SPEC-011** (Signing and Identity Layer — Keybase and Saltpack): Signature mechanism for certificates
 - **VESTA-SPEC-012** (Entity Startup): Alice is a new operator on graduate's machine; detection and introduction
 
 ---
