@@ -217,7 +217,28 @@ Every treasury action is a signed commit. The audit trail is the git log. No sep
 
 ---
 
-## 7. Uniformity as Philosophy
+## 7. Community Entities: Places, Not People
+
+A community namespace can be a full koad:io entity — gestated exactly like Juno or Vulcan, with keys, hooks, CLAUDE.md, memories, the complete stack. The only difference is the name: community entities are named after **places and concepts**, not people.
+
+```
+~/.wonderland/     ← community entity (a place)
+~/.juno/           ← personal entity (a person)
+```
+
+Both are gestated the same way. Both have `executed-without-arguments.sh`. Both load PRIMER.md from `$CWD`. Both commit with their own git identity. The structure is identical. The name signals the difference to humans; the machinery doesn't care.
+
+**Agent participation as a side effect:**
+
+When a member invokes their agent from within the community namespace — or when the community entity's own hook fires — the agent arrives oriented to the community context. It can read open proposals, tally approvals, check quorum, file a result commit, trigger a treasury action. Nobody built "DAO tooling." They just ran an agent in a folder that had the right structure.
+
+This is the foundation producing side effects. Voting, treasury management, membership governance — these are not features of the DAO system. They are things you can do in a folder when the folder is well-structured and agents know how to read it.
+
+The community entity can also have its own agents — workers that run autonomously, monitoring proposals, sending notifications, enforcing governance rules, managing the treasury. A `wonderland` entity with a standing worker is a DAO with a full-time administrator that costs nothing to run and answers to the governance rules in the repo.
+
+---
+
+## 8. Uniformity as Philosophy
 
 The fact that `/kingdoms/mvpzone/` and `/kingdoms/koad/` are structurally identical is not a simplification — it is the principle.
 
@@ -233,7 +254,7 @@ No special cases. No exception handling for "team vs. user." The same structure,
 
 ---
 
-## 8. Open Questions
+## 9. Open Questions
 
 1. **Quorum without a central clock**: Git commits have timestamps but they can be forged. How do we establish a reliable voting window? (Possible: block height from a public chain as neutral timestamp anchor.)
 
