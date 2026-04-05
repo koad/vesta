@@ -1,11 +1,14 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-002
 title: "Canonical Gestation Protocol — Entity Creation Sequence"
 type: spec
 created: 2026-04-03
+updated: 2026-04-05
 owner: vesta
 description: "Step-by-step protocol for creating new entities that conform to VESTA-SPEC-001"
+changelog:
+  - "2026-04-05: Promoted from draft to canonical — koad/vesta#14"
 ---
 
 # Canonical Gestation Protocol
@@ -749,9 +752,7 @@ An entity has been successfully gestated if:
 
 ## Status
 
-**Draft** — Ready for review by Vulcan, Juno, and Argus. Implementation deadline: 2026-04-10.
-
-Addresses koad/vesta#14. Unblocks Vulcan's entity creation work.
+**Canonical** as of 2026-04-05. Resolves koad/vesta#14. Unblocks Vulcan's entity creation work (koad/vulcan#2).
 
 ## References
 

@@ -1,15 +1,18 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-034
 title: "koad:io Package Layer — First-Class Framework Capabilities"
 type: spec
-version: 0.1
+version: 0.2
 date: 2026-04-05
+updated: 2026-04-05
 owner: vesta
 description: "The ~/.koad-io/packages/ directory contains Meteor packages that are the foundational capability layer of the koad:io framework. This spec defines naming conventions, required structure, versioning policy, layering model, and the holographic pattern mapping."
 related-specs:
   - VESTA-SPEC-001 (Entity Model)
   - VESTA-SPEC-006 (Commands System)
+changelog:
+  - "2026-04-05: Added §10 Distribution and Installation; §11 Security and Trust. Promoted to canonical. Resolves koad/vesta#22."
 ---
 
 # VESTA-SPEC-034: koad:io Package Layer
@@ -327,7 +330,90 @@ Vesta is the approving authority for new packages that change the framework API 
 
 ---
 
-## 10. Open Questions
+## 10. Distribution and Installation
+
+This section covers how koad:io packages are distributed and installed in entity environments. It addresses koad/vesta#22 (package format, versioning, distribution, installation).
+
+### 10.1 Distribution Channels
+
+koad:io packages are distributed through two channels:
+
+| Channel | Used For | Host |
+|---------|----------|------|
+| **Atmosphere** (`atmospherejs.com`) | Published Meteor packages, public consumption | Atmosphere registry |
+| **Local path** (`~/.koad-io/packages/`) | Private framework packages, entity-internal use | Disk |
+
+The `METEOR_PACKAGE_DIRS` environment variable (VESTA-SPEC-005) tells Meteor to look in `~/.koad-io/packages/` before Atmosphere. This means local packages take precedence over published versions of the same name.
+
+**External builders** who clone the koad:io framework get packages via `git clone` of `koad/io`; there is no package registry separate from the git repository at this time.
+
+### 10.2 Package Metadata (MANIFEST)
+
+In addition to `package.js`, each package SHOULD include a `MANIFEST.json` file for machine-readable metadata outside the Meteor build context:
+
+```json
+{
+  "name": "koad:io-core",
+  "version": "3.6.9",
+  "description": "Identity, IPFS, crypto, collections — lowest-level foundation",
+  "author": "koad",
+  "license": "MIT",
+  "layer": "Foundation",
+  "dependencies": [],
+  "checksum": "<sha256 of package directory contents>",
+  "signed_by": "koad"
+}
+```
+
+`MANIFEST.json` enables automated tooling (Argus, Salus) to inspect packages without executing Meteor build tools. The `checksum` field covers all source files in the package directory (excluding `MANIFEST.json` itself).
+
+### 10.3 Installation
+
+**Installation of a new package** (by Vulcan or koad):
+
+1. Copy package directory to `~/.koad-io/packages/`
+2. Ensure `METEOR_PACKAGE_DIRS` includes `~/.koad-io/packages/` (VESTA-SPEC-005, §4)
+3. Add `api.use('koad:io-newpkg')` to consuming app
+4. Run `meteor` — the build system picks up new packages automatically
+5. Document in §5.1 inventory table
+
+**There is no separate package install command** for end-users at this layer; the framework ships with packages pre-installed. A future `koad install <pkg>` command (entity command layer) may invoke a higher-level distribution mechanism.
+
+### 10.4 Discovery
+
+Entities discover available packages by:
+
+1. **Local inventory**: `ls ~/.koad-io/packages/`
+2. **Registry**: `REGISTRY.yaml` (see koad/vesta#19 and §11 of this spec)
+3. **Framework spec**: §5.1 of this document (authoritative inventory)
+
+### 10.5 Versioning and Compatibility
+
+See §6 for the SemVer policy. Version constraints across packages are declared in `package.js` via `api.use('koad:io-core@3.6.9')`. Transitive dependency resolution is handled by Meteor's package system; there is no separate resolver.
+
+---
+
+## 11. Security and Trust
+
+### 11.1 Package Signing
+
+Framework packages ship inside the `koad/io` git repository. Every commit to that repository is attributed to koad (or an authorized entity) and may be GPG-verified. There is no separate package-level signature at this time.
+
+**Future requirement**: When packages are distributed outside the `koad/io` git repo (e.g., as standalone archives), each package archive MUST be signed by the package author's entity key per VESTA-SPEC-007 and VESTA-SPEC-024.
+
+### 11.2 Checksum Verification
+
+The `MANIFEST.json` `checksum` field provides a SHA-256 hash of all source files in the package. Consumers SHOULD verify this hash before using packages obtained outside the canonical git repository.
+
+### 11.3 Trust Model
+
+- Packages inside `koad/io` git repo: trusted by git attribution
+- Packages from third parties: MUST be signed by an entity holding a valid trust bond with the consuming entity (VESTA-SPEC-007)
+- No anonymous packages: every package must have a declared `author` in `MANIFEST.json`
+
+---
+
+## 12. Open Questions
 
 1. **Package testing**: Meteor package tests (Tinytest)? Or full Meteor app integration tests? No testing standard currently exists for these packages.
 
@@ -342,11 +428,14 @@ Vesta is the approving authority for new packages that change the framework API 
 ## References
 
 - VESTA-SPEC-001: Entity Model (framework layer structure)
+- VESTA-SPEC-005: Cascade Environment (`METEOR_PACKAGE_DIRS` configuration)
 - VESTA-SPEC-006: Commands System (holographic pattern at the command layer)
+- VESTA-SPEC-007: Trust Bond Protocol (package author trust)
+- VESTA-SPEC-024: Public Key Distribution (package signing keys)
 - Meteor 3 documentation (async APIs, package system)
 - Atmosphere package repository (existing published packages)
 - `~/.koad-io/packages/` (the actual packages; this spec describes their contract)
 
 ---
 
-*Spec originated 2026-04-05. Resolves koad/vesta#80. Package audit and Meteor 3 migration tracking assigned to Vulcan.*
+*Spec originated 2026-04-05. §10-11 added 2026-04-05 to resolve koad/vesta#22. Package audit and Meteor 3 migration tracking assigned to Vulcan.*

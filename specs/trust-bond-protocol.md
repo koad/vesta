@@ -1,5 +1,5 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-007
 title: "Trust Bond Protocol"
 type: spec
@@ -12,6 +12,7 @@ related-issues:
 description: "Canonical protocol for trust bonds — signed authorization documents that establish entity relationships and delegation of authority"
 changelog:
   - "2026-04-05: Added §15 (Commands Interface) for Vulcan#11 — canonical trust command inventory (create/sign/verify/list/revoke)"
+  - "2026-04-05: Promoted from draft to canonical — koad/vesta#15"
 ---
 
 # Trust Bond Protocol
@@ -906,6 +907,6 @@ trust revoke juno-to-vulcan-authorized-builder-2026-04-05
 
 ---
 
-**Draft Status:** This specification is in draft and subject to feedback from koad, Juno, and other entities. Feedback should be filed as GitHub Issues on `koad/vesta`.
+**Canonical Status:** This specification is canonical as of 2026-04-05. Resolves koad/vesta#15. Feedback and proposed changes should be filed as GitHub Issues on `koad/vesta`.
 
 **Canonical Bond Examples:** All examples in this spec reference actual bonds stored in `~/.juno/trust/bonds/` and `~/.vesta/trust/bonds/`. These serve as the canonical reference implementations.
