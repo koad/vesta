@@ -1,10 +1,14 @@
 ---
 id: VESTA-SPEC-018
 title: Dark Passenger Augmentation Protocol
-status: draft
+status: canonical
 created: 2026-04-03
+updated: 2026-04-05
 author: Juno (from direct description by koad)
+owner: vesta
 applies-to: daemon, Dark Passenger Chrome extension, ring members
+changelog:
+  - "2026-04-05: Promoted draft → canonical. Resolved open questions (§Open Questions replaced with §Resolved Decisions). Reviewed by Vesta. Added §Security Note."
 ---
 
 # VESTA-SPEC-018: Dark Passenger Augmentation Protocol
@@ -211,13 +215,54 @@ The daemon:
 
 ---
 
-## Open Questions (for Vesta review)
+## Resolved Decisions (Vesta review, 2026-04-05)
 
-1. How does the extension handle augmentation packages from offline daemons? Cache stale version or degrade gracefully?
-2. Should peers be able to *push* augmentation contributions, or only the profile owner can update packages?
-3. Cross-ring augmentation: if koad and Sally are both in my ring, and they've both got augmentations for `twitter.com/*` — do I see both? Priority order?
-4. Security model for hook execution: how does the daemon verify the hook call came from the extension of a legitimate ring member (and not a spoofed HTTP call)?
+**Q1: Offline daemon — serve stale cached package or degrade gracefully?**
+
+Decision: **Serve stale cache with a staleness indicator; never hard-fail.**
+
+The extension SHOULD cache augmentation packages locally (in browser storage) with a version tag and last-fetched timestamp. On page load, if the daemon is unreachable, serve the cached version. The injected augmentation SHOULD include a subtle visual indicator (e.g., a small icon or tooltip) that the package is stale and the daemon is offline. Duration before showing the indicator: 24 hours since last successful fetch. After 7 days of staleness, degraded mode: show only cached CSS/HTML, do not wire hook buttons (since hooks require live daemon to execute).
+
+**Q2: Peer augmentation contributions — push model or owner-only?**
+
+Decision: **Owner-only for package updates; peers contribute via proposals.**
+
+The augmentation package is sovereign — only the profile owner can update what gets served from their daemon. Peers who want to contribute (e.g., suggest a better CSS fix for a platform) submit proposals via GitHub Issues or daemon messages. The profile owner reviews and includes the contribution in the next package update if accepted. This preserves sovereignty: a ring member cannot change what other ring members see on your pages. There is no merge authority for augmentation packages.
+
+**Q3: Multiple ring members with augmentations for the same URL — priority order?**
+
+Decision: **Profile owner's package wins; additional ring packages are additive, not conflicting.**
+
+When visiting a URL that multiple ring members have augmentations for:
+1. The URL is resolved to its primary "owner" profile (via URL association model — Method 1 TXT, Method 2 platform handle)
+2. Only the primary owner's augmentation package is applied for that URL
+3. Ring members who have *shared* an augmentation for the same URL pattern (via explicit share, Method 3) contribute additive overlays — their packages are injected after the primary, but MUST NOT remove or modify the primary owner's injections
+4. If no primary owner is resolvable (no URL claim), the oldest-registered ring member's package is used; ties are broken by ring level (closer ring wins)
+
+**Q4: Hook security — daemon verification that hook call came from a legitimate ring member's extension?**
+
+Decision: **Ring member presents a signed session token issued at ring join time; daemon verifies signature.**
+
+Hook requests from the extension include an `Authorization` header: `Bearer {ring-session-token}`. The ring session token is a short-lived JWT (or equivalent signed structure) issued by the profile owner's daemon when the ring member's extension authenticates at setup. The token:
+- Is signed by the profile owner's entity key
+- Includes: ring member identity, ring level, expiry (default 24h)
+- Is refreshed by the extension in the background before expiry
+
+The daemon verifies the token signature against the profile owner's own key (the daemon holds its own private key and can self-verify). This means the daemon doesn't need to call out to a third party for every hook — it's a self-contained verification against the token it originally issued. Spoofed HTTP calls without a valid token are rejected with HTTP 401.
+
+---
+
+## Security Note
+
+The augmentation injection model has an inherent attack surface: if the daemon is compromised, its augmentation packages could inject malicious JavaScript into any page a ring member visits. Mitigations:
+
+1. The extension SHOULD verify a package's content hash against the manifest before injecting
+2. Packages SHOULD be reviewed/signed by the profile owner before publication (using entity GPG key on the manifest)
+3. Extension SHOULD enforce a Content Security Policy on injected JS (no `eval`, no external scripts)
+4. Hook endpoints SHOULD use HTTPS (TLS) for all daemon communication, even on LAN
 
 ---
 
 *Filed by Juno, 2026-04-03. Developed from direct description by koad of the Dark Passenger augmentation model — significantly expands the scope of what was captured in Iris's platform-vision-sovereign-web.md. The key insight: the daemon is an augmentation server, the extension is a thin client, and the model works on any URL — not just owned domains.*
+
+*Promoted to canonical by Vesta, 2026-04-05. Open questions resolved above.*

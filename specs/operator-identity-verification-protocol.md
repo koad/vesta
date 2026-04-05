@@ -1,10 +1,14 @@
 ---
 id: VESTA-SPEC-017
 title: Operator Identity Verification Protocol
-status: draft
+status: canonical
 created: 2026-04-03
+updated: 2026-04-05
 author: Juno (filed on behalf of koad)
+owner: vesta
 applies-to: all entities, session initialization, elevated operations
+changelog:
+  - "2026-04-05: Promoted draft → canonical. Resolved open questions (§Open Questions section replaced with §Resolved Decisions). Reviewed by Vesta."
 ---
 
 # VESTA-SPEC-017: Operator Identity Verification Protocol
@@ -134,12 +138,30 @@ Entities MUST use one of these canonical sources to verify signatures. Never acc
 - Signed challenges should be logged (not discarded) — they are proof of presence at a moment in time.
 - On new machines: the first session after setup should always run through challenge-response to establish that the operator has their keys present before any koad-trust operations proceed.
 
-## Open Questions (for Vesta review)
+## Resolved Decisions (Vesta review, 2026-04-05)
 
-1. Should entities cache verification state within a session, or re-verify on each elevated operation?
-2. How should entities handle Keybase being installed but not yet logged in — prompt to log in, or fall through to gh/challenge?
-3. Cross-machine: if Juno on thinker needs to verify that Juno on dotsh is the same entity — same protocol applies with Juno's keys?
+**Q1: Cache verification within session, or re-verify on each elevated operation?**
+
+Decision: **Cache Tier 1 within session; always re-challenge for Tier 2.**
+
+Keybase/gh auth status does not change mid-session under normal circumstances. Running `keybase status` or `gh auth status` on every operation adds latency with no security benefit. Entities SHOULD cache the result of the Tier 1 check at session start and reuse it for the session duration. If the session is very long (>4 hours), entities MAY re-verify at their discretion.
+
+Tier 2 (elevated operations) ALWAYS requires a fresh challenge-response nonce, regardless of cached session state. The purpose of Tier 2 is explicit intent proof for a specific operation — caching defeats this.
+
+**Q2: Keybase installed but not logged in — prompt or fall through?**
+
+Decision: **Fall through to next step; optionally hint but do not block.**
+
+If `keybase status` exits non-zero or shows `Logged in: false`, treat it as a failed step and proceed to Step 2 (gh auth). Do not prompt the operator to log in — they may be operating in an environment where Keybase isn't available or they prefer a different path. Entities MAY print a single informational line: `[info] Keybase not active, falling through to gh auth` — but this is optional and should be suppressible by `KOAD_IO_QUIET=1`.
+
+**Q3: Cross-machine entity verification (Juno on thinker verifying Juno on dotsh)?**
+
+Decision: **Same protocol, with entity keys instead of operator keys.**
+
+When Juno on thinker needs to verify that a process claiming to be Juno on dotsh is authentic, use the challenge-response step with Juno's published entity keys (`canon.koad.sh/juno.keys`). The verifying entity issues a nonce; the remote entity signs it with its GPG key; the verifying entity checks against the published key. Same protocol, different key source. Entity keys are in `~/.{entity}/id/` and published via VESTA-SPEC-024.
 
 ---
 
 *Filed by Juno, 2026-04-03. Developed from a direct conversation with koad about identity spoofing and graceful verification fallback. The core insight: verification should never hard-fail — there is always a path to proof as long as the operator holds their keys.*
+
+*Promoted to canonical by Vesta, 2026-04-05. Open questions resolved above.*

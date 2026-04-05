@@ -4,8 +4,12 @@ id: VESTA-SPEC-006
 title: "Commands System — Discovery, Resolution, and Execution"
 type: spec
 created: 2026-04-03
+updated: 2026-04-05
 owner: vesta
 description: "Canonical protocol for command discovery order, resolution, execution environment, naming conventions, and subcommand patterns"
+changelog:
+  - "2026-04-05: §4 — added shell guarantee (bash), clarified set -a/set +a scope, special character handling, and subcommand variable depth. Resolves #26."
+  - "2026-04-05: §2.2 — added note that commands use cascade variables directly; must not reconstruct ENTITY_DIR from HOME. Resolves #27."
 ---
 
 # Commands System
@@ -68,6 +72,26 @@ Or for subcommands (deepest match wins):
 | `ENTITY_HOME` | string | Absolute path to entity's home dir (e.g., `/home/koad/.vesta/home/vesta`) |
 | `KOAD_IO_HOME` | string | Absolute path to koad:io framework directory (`/home/koad/.koad-io`) |
 | All cascade environment variables | various | From `~/.koad-io/.env`, `~/.entityname/.env`, command `.env` |
+
+**Conformance requirement — use cascade variables directly:**
+
+Commands MUST use `$ENTITY_DIR`, `$ENTITY`, `$KOAD_IO_HOME`, and related variables as provided by the cascade. Commands MUST NOT reconstruct these values from `$HOME`:
+
+```bash
+# WRONG — violates spec, breaks if entity directory structure changes
+ENTITY_DIR="$HOME/.$ENTITY_NAME"
+
+# CORRECT — use the cascade-provided value
+# $ENTITY_DIR is already set; use it directly
+cd "$ENTITY_DIR"
+```
+
+Reconstructing `ENTITY_DIR` from `$HOME` is a conformance violation because:
+1. It assumes the `~/.<entity>` naming convention, which may change
+2. It loses the benefits of centralized environment management via VESTA-SPEC-005
+3. Commands that construct their own path are not portable across entity configurations
+
+Commands that need to reference another entity's directory should use: `"${HOME}/.${OTHER_ENTITY}"` as a fallback only when the other entity's `ENTITY_DIR` is not available in the environment, and should document this explicitly.
 
 **Minimal example:**
 
@@ -213,13 +237,24 @@ Layer 3: Command        ~/.entityname/commands/<cmd>/.env
 Layer 4: Ad-hoc         Inline exports or parent environment
 ```
 
-**Loading Mechanism:**
+**Shell Guarantee:**
 
-The dispatcher implements cascade loading using `source` with shell options to prevent variable leakage:
+The cascade loader MUST be implemented in **bash** (not `sh` or other shells). The dispatcher shebang line is:
 
 ```bash
-# Start with clean environment
-set -a  # Auto-export all variables defined during sourcing
+#!/usr/bin/env bash
+```
+
+`.env` files are also sourced as bash syntax. Command scripts (`command.sh`) MUST use `#!/usr/bin/env bash` as their shebang. `sh`/`dash`/`zsh` compatibility is not required or tested.
+
+**Loading Mechanism:**
+
+The dispatcher implements cascade loading using `source` with `set -a`/`set +a` to auto-export variables:
+
+```bash
+# Guarantee: shell is bash
+set -a  # Auto-export ALL variables defined during sourcing
+        # (ensures variables are available to child processes without explicit export)
 
 # Layer 1: Framework defaults
 [[ -f ~/.koad-io/.env ]] && source ~/.koad-io/.env
@@ -231,9 +266,12 @@ set -a  # Auto-export all variables defined during sourcing
 [[ -f ~/.entityname/commands/<cmd>/.env ]] && source ~/.entityname/commands/<cmd>/.env
 
 set +a  # Stop auto-exporting after cascade complete
+        # (variables defined after this point are local to the dispatcher)
 
 # Layer 4: Apply any ad-hoc exports from invoking context (handled by parent shell)
 ```
+
+**Why `set -a`/`set +a`:** Without `set -a`, variables defined in sourced `.env` files are available to the current shell but not exported to child processes. `set -a` ensures every assigned variable is automatically exported. This is necessary because `command.sh` runs as a child process of the dispatcher. After cascade loading is complete, `set +a` disables auto-export to avoid accidentally exporting internal dispatcher variables.
 
 **Special Character Handling:**
 

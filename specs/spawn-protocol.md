@@ -4,8 +4,14 @@ id: VESTA-SPEC-008
 title: "Spawn Protocol — Entity Process Launch, Isolation, and Lifecycle"
 type: spec
 created: 2026-04-03
+updated: 2026-04-05
 owner: vesta
 description: "Canonical protocol for spawning entities as sovereign child processes with proper authority checks, environment handling, communication, and lifecycle management"
+changelog:
+  - "2026-04-05: §2.1 — clarified canonical bond file format (YAML frontmatter, grep-based parsing, reference to VESTA-SPEC-007). Resolves #28."
+  - "2026-04-05: §4.1 — added explicit VESTA-SPEC-005 cross-reference block with load order and isolation rules. Resolves #31."
+  - "2026-04-05: §8.1 — expanded containment status format section with field specifications, valid examples, and cross-reference to entity-containment-abort-protocol. Resolves #30."
+  - "2026-04-05: §10 — added explicit relationship note for VESTA-SPEC-005 and VESTA-SPEC-006 cascade consistency. Resolves #31."
 ---
 
 # Spawn Protocol
@@ -43,34 +49,52 @@ description: "Canonical protocol for spawning entities as sovereign child proces
 
 **Trust Bond File Format:**
 
-Trust bonds are Markdown files with YAML frontmatter (`~/.entityname/trust/bonds/target-to-entity.md`):
+> **Canonical format defined in VESTA-SPEC-007 (Trust Bond Protocol).** The format below summarizes the fields used during spawn verification. For the full bond document structure (sections, signing sequence, revocation), see VESTA-SPEC-007.
+
+Trust bonds are Markdown files with YAML frontmatter stored at `~/.{entity}/trust/bonds/{from}-to-{to}.md`. The frontmatter uses standard YAML — parse with `grep` on line-level `key: value` patterns (not JSON, not `jq`). Example:
 
 ```yaml
 ---
-grantor: juno
-grantee: vesta
-status: ACTIVE  # ACTIVE, REVOKED, EXPIRED
-permissions:
-  spawn: true
-  read: true
-  write: false
-scope: full     # full, limited, task, audit
-issued_date: 2026-04-01
-expires_date: null  # null = no expiration
+type: authorized-builder
+from: juno (juno@kingofalldata.com)
+to: vulcan (vulcan@kingofalldata.com)
+status: ACTIVE — signed by Juno via GPG 2026-04-03
+visibility: private
+created: 2026-04-03
+renewal: Annual (2027-04-03)
 ---
 
-# Optional: human-readable terms
-This bond grants vesta the authority to spawn juno for protocol audits.
+## Bond Statement
+
+> I, Juno, authorize Vulcan as my designated builder...
 ```
 
-**Field specifications:**
-- `grantor` — Entity that issued this bond (must match entity's self-trust records)
-- `grantee` — Entity being granted authority (the spawner)
-- `status` — ACTIVE, REVOKED, or EXPIRED; spawn only proceeds if ACTIVE
-- `permissions.spawn` — Boolean; must be `true` for spawn to be allowed
-- `scope` — Authority scope: `full` (no restrictions), `limited` (see conditions), `task` (specific task only), `audit` (read-only)
-- `issued_date` — ISO8601 date
-- `expires_date` — ISO8601 date or `null` (never expires)
+**Fields used for spawn verification (extracted via `grep`):**
+- `status` line — must contain `ACTIVE` for spawn to proceed; `REVOKED` or `DRAFT` = deny
+- `type` line — bond type (e.g., `authorized-builder`); spawn requires `authorized-builder`, `authorized-agent`, or `peer`
+- `renewal` line — if a date is present and has passed, bond is expired; treat as deny
+
+**Parsing pattern (YAML frontmatter, one field per line):**
+
+```bash
+# Extract status — look for ACTIVE anywhere on the status line
+BOND_STATUS=$(grep "^status:" "$BOND_FILE" | head -1)
+if ! echo "$BOND_STATUS" | grep -q "ACTIVE"; then
+  echo "Error: trust bond is not ACTIVE (status: $BOND_STATUS)" >&2
+  exit 73
+fi
+```
+
+**File naming convention:** `{from}-to-{to}.md` (lowercase, hyphenated). A bond granting Juno authority over Vulcan is `juno-to-vulcan.md`, stored in `~/.juno/trust/bonds/`.
+
+**Do NOT use `jq` to parse trust bonds.** Bond files are Markdown with YAML frontmatter, not JSON. The `grep`-based parsing shown above is canonical.
+
+**Field specifications (for spawn purposes):**
+- `from` — Entity that issued this bond (the grantor; must match the child entity in a spawn check)
+- `to` — Entity being granted authority (the grantee; must match the parent entity for spawn)
+- `status` — Contains `ACTIVE`, `DRAFT`, or `REVOKED`; spawn requires `ACTIVE`
+- `renewal` — Date string or `never`; if date has passed, treat as expired
+- `.md.asc` signature file — must exist alongside the `.md` file for full validation (see VESTA-SPEC-007 §7)
 
 **Verification:**
 ```bash
@@ -222,21 +246,26 @@ fi
 
 ### 4.1 Environment Inheritance
 
-A spawned entity **inherits** the parent's cascade environment (as defined in VESTA-SPEC-005 — Cascade Environment Protocol) **except** for sensitive variables.
+> **Cascade environment loading is fully defined in VESTA-SPEC-005 (Cascade Environment Protocol).** This section describes only the spawn-specific deviations from the standard cascade. Implementors MUST read VESTA-SPEC-005 for the authoritative load sequence, variable naming conventions, required variables, and security boundaries.
+>
+> VESTA-SPEC-006 (Commands System) uses the same cascade for command execution. Both specs defer to VESTA-SPEC-005. There is no difference between the cascade used for commands and the cascade used for spawn — the only spawn-specific behavior is identity replacement and optional isolation (described below).
 
-**Cascade Environment Loading (referenced from VESTA-SPEC-005):**
+A spawned entity **inherits** the parent's cascade environment (as defined in VESTA-SPEC-005 — Cascade Environment Protocol) **except** for identity and sensitive variables which are replaced with child values.
+
+**Cascade Environment Loading (from VESTA-SPEC-005, summarized):**
 
 The cascade load order is:
-1. Framework defaults (`~/.koad-io/.env`)
-2. Parent entity settings (`~/.parent-entity/.env`)
-3. Child entity settings (`~/.child-entity/.env`)
-4. Ad-hoc exports passed via `--env` flags
+1. Framework defaults (`~/.koad-io/.env`) — sourced with `set -a`
+2. Entity layer (`~/.{entity}/.env`) — sourced with `set -a`, overrides framework
+3. Session/local layer (optional `.env` in working directory) — sourced with `set -a`
+4. Ad-hoc exports from invoking context (highest priority)
 
-Each layer is sourced with `set -a` to auto-export all variables, and earlier layers are overridden by later layers.
+Each layer is sourced with `set -a` to auto-export all variables. Later layers override earlier layers. Missing `.env` files are silently skipped (not an error). See VESTA-SPEC-005 §3 for the authoritative load sequence and dispatcher implementation.
+
+**In spawn, the child entity's layer (#2) uses `~/.{child-entity}/.env`, not the parent's.**
 
 **Inherited variables (in default inheritance mode):**
 - Framework defaults (`~/.koad-io/.env`)
-- Parent entity settings (`~/.parent-entity/.env`)
 - Child entity settings (`~/.child-entity/.env`)
 - Ad-hoc exports passed via `--env` flags
 
@@ -522,7 +551,7 @@ exit 1
 
 ### 8.1 Containment Level Checks
 
-If the child entity is under **containment** (per VESTA-SPEC-CONTAINMENT), spawn respects containment level restrictions:
+If the child entity is under **containment** (per the Entity Containment Abort Protocol, `specs/entity-containment-abort-protocol.md`), spawn respects containment level restrictions:
 
 | Level | Spawn Allowed | Notes |
 |-------|---------------|-------|
@@ -580,7 +609,7 @@ notes: Manual review required before reinstatement
 **Check at launch:**
 ```bash
 # Before spawning, check child's containment status
-CONTAINMENT_FILE="~/.koad-io/containment/${CHILD_ENTITY}.status"
+CONTAINMENT_FILE="${HOME}/.koad-io/containment/${CHILD_ENTITY}.status"
 if [[ -f "$CONTAINMENT_FILE" ]]; then
   LEVEL=$(grep "^level:" "$CONTAINMENT_FILE" | head -1 | cut -d' ' -f2)
   if [[ "$LEVEL" == "Pause" ]] || [[ "$LEVEL" == "Isolate" ]] || [[ "$LEVEL" == "Revoke" ]]; then
@@ -712,13 +741,22 @@ $ juno spawn process vulcan "build" --isolated
 | Lifetime | Minutes to hours | Seconds to minutes |
 
 ### Cascade Environment (VESTA-SPEC-005)
-Spawn uses the cascade environment protocol defined in VESTA-SPEC-005. Key differences from the Commands system:
-- In spawn, the child entity's identity (`ENTITY`, `ENTITY_DIR`) is recomputed to the child's values
-- Sensitive variables (private keys, credentials) are NOT inherited by default
-- With `--isolated` flag, only the child's own cascade layers are used (parent environment completely cleared)
 
-### Versus Containment Abort (VESTA-SPEC-CONTAINMENT)
-Spawn respects containment levels. If a spawned entity misbehaves, it can be escalated to containment (see section 8.1).
+**VESTA-SPEC-005** is the authoritative spec for cascade environment loading. Both VESTA-SPEC-006 (Commands System) and VESTA-SPEC-008 (this spec) defer to VESTA-SPEC-005 for the canonical load sequence, variable naming conventions, required variables per layer, and security boundaries.
+
+The relationship is:
+- **VESTA-SPEC-005** — defines the cascade (how `.env` files are loaded, what shell options apply, what variables are required)
+- **VESTA-SPEC-006** — applies the cascade to command execution (adds command `.env` as layer 3)
+- **VESTA-SPEC-008** — applies the cascade to spawn (adds identity replacement and `--isolated` option)
+
+The cascade mechanics in all three specs are consistent. There is no conflict. Key spawn-specific behaviors vs the base cascade:
+- In spawn, the child entity's identity (`ENTITY`, `ENTITY_DIR`, `ENTITY_HOME`, `ENTITY_KEYS`) is recomputed to the child's values (not inherited from parent)
+- Private key paths (`*_PRIVATE`, `*_SECRET`, `*_KEY` variables) are reset; child loads its own from `~/.{child}/.env`
+- Credentials (GitHub tokens, API keys) are not passed across entity boundaries
+- With `--isolated` flag, only the child's own cascade layers are used; parent environment is completely cleared before child cascade loads
+
+### Versus Containment Abort (Entity Containment Abort Protocol)
+Spawn respects containment levels. If a spawned entity misbehaves, it can be escalated to containment (see section 8.1). The containment status file format (section 8.1) is the canonical format — the Entity Containment Abort Protocol (`specs/entity-containment-abort-protocol.md`) defines escalation procedures and authority rules for changing containment levels.
 
 ---
 
@@ -764,7 +802,7 @@ Use this checklist to implement spawn protocol:
 
 ```bash
 # Never skip this check
-BOND_FILE="~/.parent/trust/bonds/child-to-parent.md"
+BOND_FILE="${HOME}/.${PARENT_ENTITY}/trust/bonds/${CHILD_ENTITY}-to-${PARENT_ENTITY}.md"
 [[ -f "$BOND_FILE" ]] || { echo "No bond"; exit 73; }
 ```
 
