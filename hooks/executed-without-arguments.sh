@@ -13,6 +13,12 @@ if [ -z "$PROMPT" ] && [ ! -t 0 ]; then
   PROMPT="$(cat)"
 fi
 
+# Inject project PRIMER.md from CWD if present
+if [ -f "${CWD:-}/PRIMER.md" ]; then
+  PROJECT_PRIMER="$(cat "$CWD/PRIMER.md")"
+  PROMPT="$(printf 'Project context (from %s/PRIMER.md):\n%s\n\n---\n\n%s' "$CWD" "$PROJECT_PRIMER" "$PROMPT")"
+fi
+
 if [ -n "$PROMPT" ]; then
   # PID lock — prevent concurrent non-interactive invocations
   if [ -f "$LOCKFILE" ]; then
