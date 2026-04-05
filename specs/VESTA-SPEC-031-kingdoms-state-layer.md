@@ -145,7 +145,84 @@ Migration: Astro's existing state becomes `/kingdoms/astro/databases/state`. The
 
 ---
 
-## 9. Multi-Device Storage: RAID-0 Across the Peer Network
+## 9. Proxy Cache — The Ring as a Time-Smeared Snapshot
+
+The daemon is cache-heavy by design. Every operation it proxies — git pulls, issue fetches, project state queries — is cached with a timestamp. Over time, the cache builds a **ring-wide snapshot**: a composite view of all connected repos, issues, and project state, each data point labeled with when it was last seen.
+
+### 9.1 The Smear
+
+This is not a snapshot at time T. It is a **smear** — a composite across [T-24h, T-0] where each piece of data carries its own timestamp:
+
+```
+Ring snapshot — 2026-04-04 18:30 local
+─────────────────────────────────────────
+koad/juno       9 open issues   (2m ago)   ← just pulled
+koad/vulcan    28 open issues   (3h ago)   ← pulled this morning
+koad/veritas    1 open issue    (12m ago)  ← Veritas ran recently
+koad/sibyl      1 open issue    (8h ago)   ← quiet
+koad/aegis      2 open issues   (6h ago)   ← quiet
+koad/mercury    1 open issue    (2d ago)   ← stale, flag it
+─────────────────────────────────────────
+```
+
+The staleness is information. A repo that hasn't been touched in 2 days is probably quiet — or something is wrong. The dashboard renders both possibilities without hiding either. The operator sees the whole ring at a glance, with enough temporal context to know what to trust.
+
+### 9.2 Passive Cache Population
+
+The cache builds as a side effect of normal operation. No explicit "sync all" step. No scheduled full pull. The daemon intercepts:
+
+- `git pull` → caches refs, branch state, recent commits
+- `gh issue list` → caches issue state, assignees, labels
+- `gh project` queries → caches project board state
+- DDP subscriptions → real-time updates to any cached collection
+
+Every time an entity does work that touches a repo, the daemon's cache for that repo refreshes. Frequently-touched repos stay fresh. Quiet repos go stale. The cache is an honest reflection of where the team's attention has been.
+
+### 9.3 Git as Proxy
+
+Git operations route through the daemon proxy:
+
+```
+git pull kingdoms://vulcan/repo
+  → daemon checks cache age
+  → if fresh (< TTL): return cached refs
+  → if stale: proxy to upstream, update cache, return
+```
+
+This means `git clone kingdoms://koad/alice` doesn't hit GitHub directly — it hits the daemon, which either serves from cache or fetches and caches. The daemon becomes the local mirror for the ring. Offline operation works up to cache age. Bandwidth is reduced — only actual deltas flow past the daemon.
+
+### 9.4 Dashboard: At-a-Glance Ring State
+
+The portal (kingofalldata.com dashboard) renders the smear directly:
+
+```
+/kingdoms/<entity>/databases/state → ring_snapshot collection
+```
+
+Each document in `ring_snapshot`:
+```json
+{
+  "repo": "koad/vulcan",
+  "open_issues": 28,
+  "last_commit": "hooks: inject PRIMER.md",
+  "last_commit_age": "3h",
+  "cached_at": "2026-04-04T15:30:00Z",
+  "cache_age_display": "3h ago",
+  "stale": false
+}
+```
+
+The dashboard shows a row per repo. The `cached_at` is displayed prominently — the user always knows they're looking at a smear, not a live pull. A "refresh" button proxies fresh pulls for selected repos and updates the cache.
+
+### 9.5 Smear Honesty
+
+The UI never pretends the smear is a live view. Every data point shows its age. A 2-day-old issue count is displayed as "28 issues (2d ago)" — not "28 issues." The temporal honesty is a design constraint, not an aesthetic choice.
+
+This is especially important for the ring at scale: with 50 connected repos, a full live pull is impractical on demand. The smear makes the ring browsable without the cost of a full sync. The operator sees enough to know where attention is needed and can pull selectively.
+
+---
+
+## 10. Multi-Device Storage: RAID-0 Across the Peer Network
 
 The daemon peer network (SPEC-014) connects multiple machines. The kingdoms filesystem has a pluggable storage backend per namespace (SPEC-029 §7). These two facts combine into a third thing: **the connected devices form a logical storage pool.**
 
