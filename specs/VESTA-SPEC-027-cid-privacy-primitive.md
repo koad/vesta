@@ -1,8 +1,9 @@
 ---
 id: VESTA-SPEC-027
 title: CID Privacy Primitive — Opaque Addressing for the Dark Passenger
-status: draft
+status: stable
 created: 2026-04-04
+updated: 2026-04-05
 author: Vesta
 applies-to: daemon, Dark Passenger, inter-kingdom protocol, federation
 ---
@@ -367,13 +368,82 @@ No change is required for current koad:io deployments. The modulo bias fix is th
 
 ---
 
-## Open Questions (for implementation phase)
+## 9. Resolved Design Decisions
 
-1. **CID version field**: Should the wire format include a CID version identifier, in case `koad.generate.cid` is ever upgraded to a longer hash or different charset? A version prefix allows forward compatibility without breaking existing records.
-2. **Bulk resolution**: Should there be a batch endpoint (`POST /augments/resolve` with an array of CIDs) to enable prefetch without per-URL query timing? Tradeoff: reduces correlation, but bulk queries reveal the set of CIDs a client holds mappings for.
-3. **Reverse-lookup authorization**: Should kingdoms be allowed to offer a CID-to-URL reverse lookup for authorized parties? This would be useful for debugging and administration, but introduces a new exposure surface. Recommendation: yes, but ring-gated and logged.
-4. **CID expiry**: Long-lived CID mappings for URLs that change ownership (e.g., a domain that expires and is re-registered) could produce stale or misleading results. Should CID records include a TTL or a "last verified" timestamp?
+The following questions were flagged during initial drafting. All are resolved as of 2026-04-05.
+
+### 9.1 CID Version Field
+
+**Decision: YES — include a version prefix in wire format.**
+
+Wire format for CID lookup requests must include a `cid_version` field defaulting to `1`:
+
+```json
+{
+  "query": "cid-lookup",
+  "cid_version": 1,
+  "key": "k3mN7pQrX9wY2zA"
+}
+```
+
+Rationale: The current CID function (17-char SHA256-derived, 55-char charset) is `version 1`. If the charset is bumped to 64 characters (to eliminate modulo bias) or the output length is extended to 20 characters (for trillion-scale deployments), the version field allows existing kingdoms to route requests correctly without breaking records keyed to `v1` CIDs. Kingdoms must reject queries with unknown `cid_version` values and return a structured error — not a null response, which would be indistinguishable from "no record found."
+
+### 9.2 Bulk Resolution Endpoint
+
+**Decision: YES — implement batch endpoint with set-size limits.**
+
+```
+POST /augments/resolve
+{ "cids": ["k3mN7pQrX9wY2zA", "q8vR2nLpT5xK9mW", ...], "cid_version": 1 }
+```
+
+The tradeoff (batch reduces timing correlation but reveals the client's CID set) resolves in favor of batch because:
+- Timing correlation is a stronger attack than CID-set inference
+- The client's CID set only reveals which resources the client has *already computed CIDs for* — not which it is actively browsing
+- Batch queries during session initialization (prefetch) are the primary use case, not per-visit queries
+
+**Constraint**: Batch requests are capped at 100 CIDs per request. Larger sets must be split across requests with random jitter between them (prevents set-size fingerprinting).
+
+### 9.3 Reverse-Lookup Authorization
+
+**Decision: YES — ring-gated, logged, and opt-in per kingdom.**
+
+Kingdoms may expose a CID-to-URL reverse lookup endpoint for authorized parties:
+
+```
+GET /admin/cid-reverse?cid=k3mN7pQrX9wY2zA
+Authorization: Bearer <ring-credential>
+```
+
+Rules:
+- This endpoint is disabled by default. Kingdoms must explicitly enable it.
+- Callers must present a valid inner-ring or peer-ring credential.
+- All reverse-lookup requests must be logged with caller identity, timestamp, and CID queried.
+- The reverse mapping endpoint must not be accessible on the same port as the public CID lookup endpoint.
+
+This is an administrative escape hatch, not a protocol feature. CID privacy guarantees hold everywhere except within the explicit administrative surface that the kingdom operator controls.
+
+### 9.4 CID Expiry and TTL
+
+**Decision: Include `last_verified` timestamp; TTL is advisory, not enforced.**
+
+CID records must include a `last_verified` Unix timestamp:
+
+```json
+{
+  "cid": "k3mN7pQrX9wY2zA",
+  "record": { ... },
+  "last_verified": 1743811200
+}
+```
+
+Rationale: Enforced TTL (auto-expiry after N days) creates fragility for legitimate long-lived records (a stable URL mapped for years). Advisory TTL via `last_verified` allows clients to make their own staleness judgments based on their use case:
+- Augmentation packages for stable profile pages: 30-day staleness acceptable
+- Augmentation packages for transactional URLs: 24-hour staleness maximum
+- Security-sensitive records: client should re-verify on every session
+
+Kingdoms may optionally include a `suggested_ttl_seconds` field alongside `last_verified` — but clients are not required to honor it.
 
 ---
 
-*Filed by Vesta, 2026-04-04. Developed from direct observation of koad articulating the Dark Passenger privacy insight: "the dark-passenger can ask for URL information without actually saying the URL." This spec formalizes that insight as a first-class architectural primitive — not a feature of the Dark Passenger specifically, but a property of the CID addressing layer that all koad:io components inherit.*
+*Filed by Vesta, 2026-04-04. Resolved 2026-04-05. Developed from direct observation of koad articulating the Dark Passenger privacy insight: "the dark-passenger can ask for URL information without actually saying the URL." This spec formalizes that insight as a first-class architectural primitive — not a feature of the Dark Passenger specifically, but a property of the CID addressing layer that all koad:io components inherit.*
