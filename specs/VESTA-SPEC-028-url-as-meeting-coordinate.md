@@ -385,17 +385,79 @@ All mechanics in this spec depend on VESTA-SPEC-027:
 
 ---
 
-## 10. Open Questions
+## 10. Open Questions — Vesta Review (2026-04-05)
 
-1. **Presence expiry** — Should presence declarations at a CID expire? TTL options?
-2. **Overlay canonicalization** — When multiple ring members annotate the same dead URL, how are overlays merged or ordered?
-3. **Bio scan rate** — How frequently should passengers scan known contacts' bios? Event-driven vs. scheduled?
-4. **Cross-kingdom intro spam** — Rate limiting on cross-kingdom CID broadcasts to prevent fishing for CID matches?
-5. **Proof revocation** — Can an entity revoke a proof record it previously signed and propagated?
-6. **Private coordinates** — URLs never published publicly (agreed out of band) as secret coordinates — threat model for coordinate guessing?
+**Q1: Presence expiry**
+
+Presence declarations expire by default with a configurable TTL. Default: 24 hours. Reasoning: a "party on MySpace" announcement is time-bounded. An entity that is genuinely present at a coordinate long-term can refresh its declaration.
+
+```json
+{
+  "cid": "<id>",
+  "declared_by": "koad",
+  "declared_at": "2026-04-04T20:00:00Z",
+  "ttl_seconds": 86400,
+  "expires_at": "2026-04-05T20:00:00Z"
+}
+```
+
+Entities may declare `ttl_seconds: 0` for permanent presence (e.g., "this is my permanent meeting place"). The ring can filter by expiry when querying.
+
+**Q2: Overlay canonicalization**
+
+When multiple ring members annotate the same dead URL:
+- Overlays are entity-attributed (each overlay carries its author's entity name and timestamp)
+- No automatic merge. Overlays coexist — the passenger UI renders all of them, sorted by `created_at`
+- An entity may "endorse" another's overlay (ring-scoped endorsement, same CID, points to the overlay's content hash)
+- If the community needs a canonical overlay, it files a PR in the community namespace — the merge is the canonicalization. Same DAO mechanism.
+
+**Q3: Bio scan rate**
+
+Event-driven primary, scheduled fallback:
+- **Event-driven**: scan a contact's bio when you encounter their content (they post, comment, send a message in your ring)
+- **Scheduled fallback**: scan all known contacts' bios once every 24 hours (background task, low priority)
+- **On first connect**: always scan the bio of a newly added ring member
+
+This avoids constant polling while catching beacons that were placed before the contact relationship existed.
+
+**Q4: Cross-kingdom intro spam prevention**
+
+Rate limit on cross-kingdom CID broadcast: maximum 10 CID broadcast queries per minute per kingdom. Broadcasts that exceed this rate are dropped silently (no error response that could be used to probe).
+
+Additionally: a kingdom that repeatedly broadcasts CIDs with no matches (fishing behavior) is automatically rate-limited further for 1 hour. The rate-limit counter resets on a confirmed match.
+
+**Q5: Proof revocation**
+
+Yes. An entity may issue a proof revocation:
+```json
+{
+  "revokes": "<original-proof-cid>",
+  "signed_by": "<entity>",
+  "reason": "CID collision discovered / beacon was placed in error",
+  "date": "2026-04-05"
+}
+```
+
+Revocation is distributed to ring members who hold the original proof. They update their local record. Old proofs marked revoked are not propagated to new ring members.
+
+**Q6: Private coordinate threat model**
+
+A URL never published publicly (agreed out of band) is a secret coordinate. Threat: an adversary tries to guess the URL to compute the CID and fish for gatherings.
+
+Mitigations:
+1. **High-entropy URLs**: using a URL with sufficient entropy (e.g., `secret.example.com/meeting/a7f3b9c2d1e4f8`) makes brute-force guessing computationally infeasible
+2. **CID is one-way**: knowing the CID does not reveal the URL (VESTA-SPEC-027 §3 privacy guarantee)
+3. **Ring scope**: even if an adversary guesses the CID, presence declarations and ring queries require ring membership to see responses
+4. **Threat surface**: the only path to breaking a private coordinate is (a) guessing the exact URL or (b) compromising a ring member. Both are out-of-scope for the coordinate protocol itself.
+
+For maximum security, private coordinates should use URLs with ≥ 128 bits of entropy (e.g., UUID4 path segments). Documentation of this as a best practice is sufficient.
 
 ---
 
 ## Status
 
-Draft. Passenger API surface is proposed, not implemented. Core CID mechanics inherit from VESTA-SPEC-027. Implementation order: §1 (coordinate mechanics) → §5 (bio beacon scan) → §4 (cross-kingdom intro) → §3 (dead URL occupation) → §2 (ring presence query).
+Draft reviewed by Vesta 2026-04-05. All open questions resolved. Passenger API surface (§9.1) remains proposed, not yet implemented. Core CID mechanics inherit from VESTA-SPEC-027.
+
+Implementation order: §1 (coordinate mechanics) → §5 (bio beacon scan) → §4 (cross-kingdom intro) → §3 (dead URL occupation) → §2 (ring presence query).
+
+This spec may be promoted to `canonical` after Passenger §9.1 API surface is implemented by Vulcan and confirmed against this spec.

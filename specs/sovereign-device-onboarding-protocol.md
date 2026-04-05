@@ -3,7 +3,9 @@ id: VESTA-SPEC-019
 title: Sovereign Device Onboarding Protocol
 status: draft
 created: 2026-04-03
+updated: 2026-04-05
 author: Juno (from direct description by koad)
+reviewer: Vesta
 applies-to: koad:io Authenticator, Dark Passenger, daemon, all koad:io clients
 ---
 
@@ -166,14 +168,73 @@ The peer never gives the ring owner their private keys. The ring owner never hol
 
 ---
 
-## Open Questions (for Vesta review)
+## Open Questions — Vesta Review (2026-04-05)
 
-1. Credential return channel: which of the three return methods (local network, daemon relay, QR round-trip) is primary? All three need to work; what's the priority order?
-2. Offline onboarding: what if the profile owner's phone has no network access? QR round-trip is the fallback — specify fully.
-3. Multi-profile support: can the authenticator hold keys for multiple profiles (e.g., koad + juno on the same phone)?
-4. Credential expiry: should device credentials expire and require renewal, or persist until explicitly revoked?
-5. The "new authenticator" flow when no old phone exists (lost/broken): recovery via paper key or shamir backup? Out of scope here but needs a companion spec.
+**Q1: Credential return channel priority order?**
+
+Priority order:
+1. **Local network (primary)** — fastest, no external dependency, works offline. Authenticator broadcasts a signed credential on the LAN. New device listens on a well-known port (configurable, default: 14200). If both devices are on the same LAN, this completes in under 1 second.
+2. **Daemon relay (secondary)** — when LAN is not shared (e.g., phone on cellular, new device on office WiFi). Authenticator sends credential to the user's daemon via an authenticated push. Daemon holds it until the new device polls or receives a push notification. Latency: 2–10 seconds depending on daemon connectivity.
+3. **QR round-trip (fallback)** — both devices offline or no daemon reachable. Authenticator displays a response QR containing the signed credential. New device scans it. Latency: manual (human scan). Always works; requires no network.
+
+All three methods produce identical credential payloads. The new device cannot distinguish which channel delivered it.
+
+**Implementation note:** New device tries LAN first (3s timeout), then falls back to daemon relay (10s timeout), then prompts user to use QR round-trip. No user configuration needed for the common case.
+
+**Q2: Offline onboarding (QR round-trip fully specified)**
+
+Full flow for QR round-trip:
+
+1. New device generates challenge QR (Step 1 per §Device Onboarding Flow)
+2. New device enters "waiting for QR response" mode (displays a second QR zone)
+3. Operator opens authenticator, scans the challenge QR (Step 2 per §Device Onboarding Flow)
+4. Authenticator displays the signed credential as a QR code (the response QR)
+5. New device scans the response QR
+6. New device decodes the credential: `{signature, device_id, device_pubkey, nonce, profile_handle, profile_public_key}`
+7. New device verifies: `gpg --verify` signature using the profile's public key (embedded in the credential or pre-loaded)
+8. On success: credential stored locally, device is live
+
+The profile's public key must be available to the new device to verify the signature. Two options:
+- **Pre-loaded**: the new device was given the public key at install time (e.g., bundled in the authenticator app's config, or scanned from a separate "identity QR")
+- **Embedded in credential**: the authenticator includes the profile's public key in the credential payload; the new device trusts it on first-use (TOFU), then verifies against a known record on subsequent use
+
+TOFU is acceptable for first onboarding. Subsequent credential refreshes must match the previously verified public key.
+
+**Q3: Multi-profile support**
+
+Yes. The authenticator may hold keys for multiple profiles. Each profile is a separate keyring entry:
+
+```
+authenticator/profiles/
+  koad.json       ← koad's profile (keys + device registry)
+  juno.json       ← Juno's profile (keys + device registry)
+```
+
+When scanning a challenge QR, the authenticator detects the `profile_handle` field and selects the corresponding keyring. If the scanned QR requests `profile: juno`, the authenticator signs with Juno's key. If the operator holds both profiles and both keys, they choose which identity to use.
+
+**UX constraint:** The authenticator must make the selected profile visible during approval: "Signing in Dark Passenger as **juno** (not koad). [Switch]". Accidental cross-profile sign-ins must be impossible to miss.
+
+**Q4: Credential expiry**
+
+Policy: device credentials **persist until explicitly revoked**, with two exceptions:
+
+- **Entity sessions** (Claude Code, opencode): credentials expire at session end (process exit). A new session generates a new credential.
+- **Ring peer membership tokens**: expire per the terms of the ring bond (which has its own renewal policy — see SPEC-007 §3).
+
+Permanent credentials for daemons and Dark Passenger are intentional: these long-running processes should not require periodic re-authorization. Revocation is the mechanism for removing access.
+
+However: daemons and passengers must re-verify their credential against the profile's `active.json` **on every daemon restart** (not every request). If the device is absent from `active.json` on restart, the credential is rejected.
+
+**Q5: Recovery when no old phone exists**
+
+Out of scope for this spec. Companion spec required: **VESTA-SPEC-035** (Sovereign Recovery Protocol). Options include:
+
+- Paper key recovery (entropy printed at gestation)
+- Shamir Secret Sharing split across trusted contacts
+- Social recovery via ring consensus
+
+Until SPEC-035 exists, the practical answer is: keep an offline backup of the profile's root private key in a physically secure location. Loss of the root key without a backup means starting over with a new profile.
 
 ---
 
-*Filed by Juno, 2026-04-03. Developed from direct description by koad of the authenticator onboarding model. Core insight: QR-based chain-of-trust device authorization — same model as passkeys/FIDO2 but fully sovereign, no vendor in the chain, profile as ledger.*
+*Filed by Juno, 2026-04-03. Reviewed by Vesta, 2026-04-05. Open questions resolved in review. Remaining work: companion spec VESTA-SPEC-035 (key recovery) needed before this spec reaches canonical status.*
