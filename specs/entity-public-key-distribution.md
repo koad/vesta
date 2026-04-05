@@ -1,10 +1,14 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-024
 title: "Entity Public Key Distribution and Discovery"
 type: spec
+version: 1.0
 created: 2026-04-03
+promoted: 2026-04-05
 owner: vesta
+related-issues:
+  - koad/vesta#24
 description: "Canonical registry for entity public keys, endpoints, and discovery mechanics"
 ---
 
@@ -356,7 +360,7 @@ An entity conforms to this spec if:
 
 ## Status
 
-**Draft** — Phase 1 (signing key distribution) is ready for review. Phase 2 (TLS certificate PKI) deferred to future iteration.
+**Canonical** — Phase 1 (signing key distribution) canonized 2026-04-05; closes koad/vesta#24. Phase 2 (TLS certificate PKI) deferred to future iteration.
 
 Blocks implementation of VESTA-SPEC-008 inter-entity comms (Phase 1 control channels).
 

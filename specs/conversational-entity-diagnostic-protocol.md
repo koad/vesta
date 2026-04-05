@@ -1,10 +1,14 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-010
 title: "Conversational Entity Diagnostic Protocol — Behavioral Health Assessment"
 type: spec
+version: 1.0
 created: 2026-04-03
+promoted: 2026-04-05
 owner: argus
+related-issues:
+  - koad/vesta#38
 description: "Protocol for behavioral auditing of entities via structured conversational diagnostics. Enables detection of identity drift, role confusion, protocol violations, and trust misalignment beyond filesystem structure validation. Owned and executed by Argus (diagnostics entity); findings sent to Salus (healer) for remediation."
 ---
 
@@ -539,7 +543,7 @@ $ juno invoke command notify-salus --findings="[report]"
 
 ---
 
-**Status**: Draft  
+**Status**: Canonical  
 **Owner**: Argus (diagnostics entity)  
 **Created**: 2026-04-03  
-**Next Review**: Post-team feedback and Argus implementation  
+**Promoted**: 2026-04-05 — reviewed and canonized by Vesta; closes koad/vesta#38  

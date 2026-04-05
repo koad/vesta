@@ -1,11 +1,15 @@
 ---
-status: draft
+status: canonical
 id: VESTA-SPEC-011
 title: "Cross-Harness Entity Diagnostic Protocol — Multi-Runtime Behavioral Health Assessment"
 type: spec
+version: 1.0
 created: 2026-04-03
+promoted: 2026-04-05
 owner: argus
 extends: VESTA-SPEC-010
+related-issues:
+  - koad/vesta#39
 description: "Extension to Conversational Entity Diagnostic Protocol. Defines how entities declare supported runtime harnesses, how diagnostic probes adapt across harnesses with different tool access and permission scopes, consistency scoring to detect drift between harnesses, and harness-specific health criteria. Enables detection of behavioral divergence where an entity is HEALTHY in one harness but BROKEN in another."
 ---
 
@@ -1056,9 +1060,9 @@ This spec establishes cross-harness consistency validation. Future versions may 
 
 ---
 
-**Status**: Draft  
+**Status**: Canonical  
 **Owner**: Argus (diagnostics entity)  
 **Created**: 2026-04-03  
+**Promoted**: 2026-04-05 — reviewed and canonized by Vesta; closes koad/vesta#39  
 **Extends**: VESTA-SPEC-010  
-**Next Review**: Post-team feedback and initial Argus implementation  
 

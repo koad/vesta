@@ -6,7 +6,12 @@ type: spec
 created: 2026-04-03
 updated: 2026-04-05
 owner: vesta
+related-issues:
+  - koad/vesta#15
+  - koad/vesta#53
 description: "Canonical protocol for trust bonds — signed authorization documents that establish entity relationships and delegation of authority"
+changelog:
+  - "2026-04-05: Added §15 (Commands Interface) for Vulcan#11 — canonical trust command inventory (create/sign/verify/list/revoke)"
 ---
 
 # Trust Bond Protocol
@@ -758,6 +763,134 @@ Hash: [algorithm]
 ```
 
 Tools should use standard GPG or Keybase libraries to verify these.
+
+---
+
+## 15. Commands Interface
+
+Every entity that participates in the trust bond system should implement the following commands in `~/.{entity}/commands/trust/`. This interface is canonical and is what Vulcan should implement per `koad/vulcan#11`.
+
+### 15.1 Command Inventory
+
+| Command | Invocation | Purpose |
+|---------|-----------|---------|
+| `trust create` | `trust create <grantee> <scope>` | Draft a new bond document |
+| `trust sign` | `trust sign <bond-file>` | Sign a bond with this entity's key |
+| `trust verify` | `trust verify <bond-file>` | Validate signature and chain |
+| `trust list` | `trust list` | List all bonds in `trust/bonds/` |
+| `trust revoke` | `trust revoke <bond-name>` | File a revocation notice |
+
+### 15.2 Command Specifications
+
+#### `trust create <grantee> <scope>`
+
+Creates a draft bond document at `trust/bonds/<grantee>-<scope>-<timestamp>.md`.
+
+**Arguments:**
+- `grantee` — entity name (e.g., `vulcan`)
+- `scope` — authorization scope (e.g., `authorized-builder`); must be a valid scope from §3.2
+
+**Behavior:**
+1. Generate ISO 8601 timestamp
+2. Write bond document from template (see §4.1) to `trust/bonds/`
+3. Pre-fill: `from` (current entity), `to` (grantee), `scope`, `created`, `status: draft`
+4. Print bond file path to stdout
+
+**Example:**
+```bash
+trust create vulcan authorized-builder
+# → trust/bonds/juno-to-vulcan-authorized-builder-2026-04-05.md
+```
+
+#### `trust sign <bond-file>`
+
+Signs the bond document and writes the detached signature.
+
+**Arguments:**
+- `bond-file` — path to bond `.md` file
+
+**Behavior:**
+1. Read bond document
+2. Verify `from` field matches current entity (refuse if signing on behalf of another entity)
+3. Sign using entity's GPG key: `gpg --clearsign <bond-file>`
+4. Write signature to `<bond-file>.asc`
+5. Update bond document `status: active` if grantor-side signature (see §5.2)
+6. Print: `Signed: <bond-file>.asc`
+
+**Example:**
+```bash
+trust sign trust/bonds/juno-to-vulcan-authorized-builder-2026-04-05.md
+# → Signed: trust/bonds/juno-to-vulcan-authorized-builder-2026-04-05.md.asc
+```
+
+#### `trust verify <bond-file>`
+
+Validates a bond's signature and checks chain consistency.
+
+**Arguments:**
+- `bond-file` — path to bond `.md` file (signature file `<bond-file>.asc` must exist alongside it)
+
+**Behavior:**
+1. Check `<bond-file>.asc` exists
+2. Verify GPG signature against grantor's public key (fetched from VESTA-SPEC-024 registry)
+3. Parse bond fields; validate required fields present (§6.1)
+4. Check bond `status` is `active` (not `revoked` or `expired`)
+5. If bond has `parent`, recursively verify parent chain
+6. Print: `VALID` (exit 0) or `INVALID: <reason>` (exit 1)
+
+**Example:**
+```bash
+trust verify trust/bonds/juno-to-vulcan-authorized-builder-2026-04-05.md
+# → VALID: juno → vulcan [authorized-builder] expires 2027-04-05
+```
+
+#### `trust list`
+
+Lists all bonds in `trust/bonds/`.
+
+**Behavior:**
+1. Scan `trust/bonds/*.md`
+2. Parse each bond's `from`, `to`, `scope`, `status`, `expires` fields
+3. Print tabular output:
+
+```
+FROM        TO          SCOPE                  STATUS    EXPIRES
+koad        juno        authorized-agent       active    2027-04-05
+juno        vulcan      authorized-builder     active    2027-04-05
+juno        veritas     peer                   active    (none)
+```
+
+4. Exit 0 if bonds exist; exit 1 if `trust/bonds/` is empty
+
+#### `trust revoke <bond-name>`
+
+Files a revocation notice for an existing bond.
+
+**Arguments:**
+- `bond-name` — filename of bond in `trust/bonds/` (without `.md`)
+
+**Behavior:**
+1. Read bond document
+2. Verify current entity is either `from` or `to` in the bond (only parties can revoke)
+3. Update bond document `status: revoked`
+4. Append `revoked_at: <ISO timestamp>` and `revoked_by: <current entity>`
+5. Re-sign the updated document (writes new `.asc` — see §8 revocation protocol)
+6. Commit the change (revocation is a permanent record)
+7. Print: `Revoked: <bond-name>`
+
+**Example:**
+```bash
+trust revoke juno-to-vulcan-authorized-builder-2026-04-05
+# → Revoked: juno-to-vulcan-authorized-builder-2026-04-05
+```
+
+### 15.3 Implementation Notes for Vulcan
+
+- Commands live in `~/.{entity}/commands/trust/` — one subdirectory per subcommand
+- Signing uses the entity's primary GPG key (from `~/.{entity}/id/`)
+- Public key lookup uses VESTA-SPEC-024 registry (`~/.vesta/entities/<entity>/public.key`)
+- All commands should exit 0 on success, non-zero on failure
+- All commands should write machine-readable output when `--json` flag is passed
 
 ---
 

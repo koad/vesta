@@ -3,16 +3,23 @@ status: canonical
 id: VESTA-SPEC-009-DAEMON
 title: "Daemon Specification — Passenger Registry, Worker System, Lifecycle, Dark Passenger Integration"
 type: spec
-version: 1.0
-date: 2026-04-03
+version: 1.1
+date: 2026-04-05
 owner: vesta
 related-issues:
   - koad/vesta#17
+  - koad/vesta#34
+  - koad/vesta#35
+  - koad/vesta#36
+  - koad/vesta#37
   - koad/vulcan#22
 related-specs:
   - VESTA-SPEC-001 (Entity Model)
   - VESTA-SPEC-005 (Cascade Environment)
   - VESTA-SPEC-009 (Hooks Catalog)
+changelog:
+  - "1.1 (2026-04-05): Resolved open questions from koad/vesta#34-37 — clarified /api/health endpoint (§8.3.1), defined worker type enum (§4.2.1), defined asof field semantics (§4.3), defined MongoDB outage recovery (§8.5), filled Salus query protocol (§8.3.2), fixed domeSession typo, corrected default type from 'general' to 'cron'"
+  - "1.0 (2026-04-03): Initial canonical spec"
 ---
 
 # VESTA-SPEC-009-DAEMON: Daemon Specification
@@ -400,7 +407,7 @@ When registered, worker creates a MongoDB document in `workers` collection:
   
   // Health & History
   lastHeartbeat: ISODate("2026-04-03T10:45:00Z"),
-  asof: ISODate("2026-04-03T10:45:00Z"),
+  asof: ISODate("2026-04-03T10:45:00Z"),        // Snapshot timestamp: when this document was last authoritatively written by the daemon health loop (distinct from updatedAt which reflects any write)
   nextExecution: ISODate("2026-04-03T11:45:00Z"),
   lastExecution: ISODate("2026-04-03T10:00:00Z"),
   lastExecutionDuration: 1234,        // Milliseconds
@@ -426,7 +433,8 @@ When registered, worker creates a MongoDB document in `workers` collection:
 **Key fields for health monitoring (Salus):**
 - `state`: Current state of worker
 - `insane`: If true, worker has failed max attempts; needs manual intervention
-- `lastHeartbeat`: When worker last reported alive
+- `lastHeartbeat`: When worker last reported alive (updated every heartbeat cycle, used for stale detection)
+- `asof`: Snapshot timestamp — when the daemon's health loop last wrote this document authoritatively. Use this (not `updatedAt`) to detect whether the daemon itself is alive and cycling. If `asof` is stale (> 5 minutes old) and the daemon process is running, the health loop has stalled.
 - `errorCount`: How many times worker has failed
 - `errors[]`: Full error history with stack traces
 - `nextExecution`: Predicted next run time
@@ -848,7 +856,7 @@ setInterval(() => {
   });
 
   // Check 4: DDP session alive
-  if (!ddpSession.isConnected) {
+  if (!ddpSession.isConnected) {  // was: domeSession (typo, fixed)
     logger.warn('DDP connection lost, attempting reconnect');
   }
 }, 60000);
@@ -911,6 +919,46 @@ curl -s http://127.0.0.1:28282/api/health | jq .
 - Track daemon uptime (useful for restart detection)
 
 ### 8.3.2 Salus Query Protocol
+
+Salus monitors daemon health through a two-layer approach:
+
+**Layer 1: HTTP health check (primary)**
+
+```bash
+# Salus polls every 60 seconds
+STATUS=$(curl -sf http://127.0.0.1:28282/api/health 2>/dev/null)
+if [ $? -ne 0 ]; then
+  # Daemon process not responding — escalate immediately
+  salus alert "daemon-unreachable" --severity=critical
+else
+  HEALTH=$(echo "$STATUS" | jq -r '.status')
+  case "$HEALTH" in
+    healthy)   salus log "daemon healthy" ;;
+    degraded)  salus alert "daemon-degraded" --findings="$STATUS" --severity=medium ;;
+    unhealthy) salus alert "daemon-unhealthy" --findings="$STATUS" --severity=critical ;;
+  esac
+fi
+```
+
+**Layer 2: MongoDB direct query (supplemental)**
+
+When HTTP check succeeds but anomalies are suspected, Salus queries the `workers` collection directly:
+
+```javascript
+// Query stale workers (no asof update for > 5 minutes)
+db.workers.find({ asof: { $lt: new Date(Date.now() - 5*60*1000) } })
+
+// Query workers past their next execution time by > 2 intervals
+db.workers.find({ nextExecution: { $lt: new Date(Date.now() - 2*interval*60*1000) } })
+
+// Query insane workers needing intervention
+db.workers.find({ insane: true })
+```
+
+**Alert routing:**
+- `healthy` → log only, no alert
+- `degraded` → notify Juno (info), open GitHub issue if persists > 30 min
+- `unhealthy` → notify Juno (critical), attempt daemon restart if `KOAD_IO_AUTO_SPAWN_MONGO=1`
 
 ### 8.4 Graceful Shutdown
 
@@ -1030,7 +1078,7 @@ const WORKER_DEFAULTS = {
   maxAttempts: 3,
   timeout: 300000,        // 5 minutes
   runImmediately: false,
-  type: 'general'
+  type: 'cron'            // Default type; see section 4.2.1 for valid values
 };
 ```
 
