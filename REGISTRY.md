@@ -35,6 +35,7 @@ For the full spec lifecycle (draft → review → canonical), see `SPEC-PROMOTIO
 | VESTA-SPEC-047 | Alice Session Sync Model — Cross-Device Constraint Documentation and Decision Boundary | constraint-documented | 2026-04-05 |
 | VESTA-SPEC-048 | Alice Entity Architecture — Hook Behavior, State Management, Curriculum Loading, Session Resumption, Multi-Learner Routing | canonical | 2026-04-05 |
 | VESTA-SPEC-049 | Alice CLI Interface — Invocation Flags, UX Flows, Progress Output, Export, Error Cases | canonical | 2026-04-05 |
+| VESTA-SPEC-050 | Stage-and-Submit — Builder Spec for Vulcan (platform scope, Mercury interface, Phase 1) | draft | 2026-04-05 |
 
 ---
 
