@@ -254,7 +254,34 @@ No special cases. No exception handling for "team vs. user." The same structure,
 
 ---
 
-## 9. Open Questions
+## 9. Community Name Collisions and the Bridge Member
+
+Community namespaces have the same handle collision model as entity namespaces (VESTA-SPEC-029 §10) — no global registrar, fingerprint is canonical, handle is a human alias. But at the community level, collision has an additional property: **the member who joins multiple same-named communities becomes the bridge between them.**
+
+If a user joins three communities all named "wonderland":
+
+```
+/kingdoms/wonderland/           ← the one they're standing in (FUSE preference)
+/kingdoms/<fp-wonderland-2>/    ← second wonderland, reachable by fingerprint
+/kingdoms/<fp-wonderland-3>/    ← third wonderland, reachable by fingerprint
+```
+
+The other two wonderlands are not conflicts — they are **peers the user is connected to, guaranteed.** From the user's perspective, their three wonderlands are one extended network: they carry context from each into the others, know people in all three, and are the guaranteed routing path between communities that might not otherwise be connected.
+
+**Self-resolving dynamics:**
+
+Communities with the same name that share members will either:
+
+1. **Differentiate** — distinct culture, purpose, or geography emerges; communities rename to reflect what makes them distinct
+2. **Converge** — shared members bring enough mutual context that the communities begin acting as one; formal merger follows naturally
+
+No admin intervention. No registrar arbitration. The trust ring routes through people. The collision produces a social graph edge, not a namespace error.
+
+**The user is the merge point.** The filesystem doesn't try to unify them. The human who spans all three is the unification. This is how human communities have always worked — the person who is in multiple overlapping groups is the connective tissue between them.
+
+---
+
+## 10. Open Questions
 
 1. **Quorum without a central clock**: Git commits have timestamps but they can be forged. How do we establish a reliable voting window? (Possible: block height from a public chain as neutral timestamp anchor.)
 
