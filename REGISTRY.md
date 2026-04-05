@@ -40,6 +40,7 @@ For the full spec lifecycle (draft → review → canonical), see `SPEC-PROMOTIO
 | VESTA-SPEC-052 | Lyra Cue Sheet Format — Musical Direction Output for Video Production | canonical | 2026-04-05 |
 | VESTA-SPEC-053 | Entity Portability Contract — The Repo IS the Entity | canonical | 2026-04-05 |
 | VESTA-SPEC-054 | Multi-Entity Orchestration Protocol — Agent Tool, Background Work, Git Verification, and the GitHub Issues Boundary | canonical | 2026-04-05 |
+| VESTA-SPEC-055 | Trust Bond File Format — Canonical Schema, Signing Protocol, and Storage Convention | canonical | 2026-04-05 |
 
 ---
 
