@@ -214,7 +214,32 @@ Each document in `ring_snapshot`:
 
 The dashboard shows a row per repo. The `cached_at` is displayed prominently — the user always knows they're looking at a smear, not a live pull. A "refresh" button proxies fresh pulls for selected repos and updates the cache.
 
-### 9.5 Smear Honesty
+### 9.5 Authenticated Pull Requests
+
+Every cache access is signed. The daemon verifies the requester's identity against their trust bond before serving or refreshing:
+
+```
+koad pulls vulcan's cache:
+  → request signed with koad's key
+  → daemon: "this is koad, he owns this cache" → instant, unlimited
+
+mom pulls koad's cache:
+  → request signed with mom's key
+  → daemon: lookup bond koad→mom
+  → bond says: rate_limit=10/hour, scope=public, refresh=false
+  → serve public cache only, no fresh pull triggered, rate limited
+
+stranger (no bond):
+  → request signed with unknown key
+  → daemon: no bond found
+  → serve public namespace only, or deny
+```
+
+The trust bond is the pull policy. The cryptographic signature is the policy lookup key. One verification step, and the daemon knows exactly what the requester is allowed to see, how often, and whether they can trigger upstream fetches.
+
+This means bandwidth is controlled. A requester with `refresh=false` can browse the cached smear but cannot force a fresh pull that costs the cache owner bandwidth or API rate limit. The owner always controls the cost of their cache serving.
+
+### 9.6 Smear Honesty
 
 The UI never pretends the smear is a live view. Every data point shows its age. A 2-day-old issue count is displayed as "28 issues (2d ago)" — not "28 issues." The temporal honesty is a design constraint, not an aesthetic choice.
 
