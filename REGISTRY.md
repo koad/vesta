@@ -36,6 +36,9 @@ For the full spec lifecycle (draft → review → canonical), see `SPEC-PROMOTIO
 | VESTA-SPEC-048 | Alice Entity Architecture — Hook Behavior, State Management, Curriculum Loading, Session Resumption, Multi-Learner Routing | canonical | 2026-04-05 |
 | VESTA-SPEC-049 | Alice CLI Interface — Invocation Flags, UX Flows, Progress Output, Export, Error Cases | canonical | 2026-04-05 |
 | VESTA-SPEC-050 | Stage-and-Submit — Builder Spec for Vulcan (platform scope, Mercury interface, Phase 1) | draft | 2026-04-05 |
+| VESTA-SPEC-051 | PRIMER Convention — Orientation Files for Agent Sessions | canonical | 2026-04-05 |
+| VESTA-SPEC-052 | Lyra Cue Sheet Format — Musical Direction Output for Video Production | draft | 2026-04-05 |
+| VESTA-SPEC-053 | Entity Portability Contract — The Repo IS the Entity | canonical | 2026-04-05 |
 
 ---
 
