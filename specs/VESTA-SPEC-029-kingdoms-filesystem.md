@@ -47,7 +47,9 @@ The result: `/kingdoms/` — a FUSE-mounted namespace where every entity has a s
 
 ```
 /kingdoms/
-├── koad/
+├── <url_cid>/              ← URL-addressed namespace (see §2.4)
+├── <key_fingerprint>/      ← entity identity namespace (see §10.5)
+├── koad/                   ← handle alias → resolves to fingerprint
 │   ├── private/       ← koad-only; no external read
 │   ├── public/        ← world-readable
 │   └── shared/
@@ -68,6 +70,45 @@ The result: `/kingdoms/` — a FUSE-mounted namespace where every entity has a s
 │
 └── ...                ← one subtree per entity/kingdom
 ```
+
+### 2.4 URL-Addressed Namespaces
+
+Not all namespaces belong to entities. Any URL can address a namespace via its CID (VESTA-SPEC-027):
+
+```
+URL: https://github.com/koad
+handle: httpsgithubcomkoad
+CID: GdYZWjcjY6Y2XonnM
+
+→ /kingdoms/GdYZWjcjY6Y2XonnM/   ← namespace for everything tied to that URL
+```
+
+This namespace is where you store **augments** — notes, annotations, context bubbles, extensions, files — tied to that specific URL. Whoever knows the CID (i.e., anyone who can derive it from the URL) can address the namespace. Access control is still governed by trust bonds.
+
+```
+/kingdoms/GdYZWjcjY6Y2XonnM/
+  notes.md             ← koad's notes about this URL
+  context.json         ← structured context bubble
+  augments/            ← browser extension augments
+    highlight.json
+    sidebar.md
+  shared/koad/         ← bilateral with koad (same model as entity shared/)
+```
+
+The browser extension (passenger) loads this namespace automatically when you visit the URL:
+
+```
+1. Visit https://github.com/koad
+2. Passenger: derive CID → GdYZWjcjY6Y2XonnM
+3. Passenger: load /kingdoms/GdYZWjcjY6Y2XonnM/
+4. Passenger: inject augments into page, surface notes, load context
+```
+
+Zero configuration. Zero explicit linking. The URL IS the address. Stand on the page; the page's augments load.
+
+This is the filesystem layer of the context bubble architecture. The CID is the stable coordinate. The kingdoms namespace is the store. The passenger is the reader.
+
+---
 
 ### 2.1 Visibility Tiers
 
@@ -438,9 +479,64 @@ The ring is the enforcement layer. There is no appeal to a central authority bec
 
 A sufficiently well-known entity (like the real koad) will have many bonds attesting to their CID. An impersonator will have few or none. The ring's collective memory resolves the ambiguity without any registrar involved.
 
-### 10.5 Recommendation
+### 10.5 The Real Coordinate: Key Fingerprint
 
-Always share CID paths in permanent contexts (trust bonds, specs, issues). Share handle paths in conversation — they're for humans. The CID is the ground truth.
+The CID (VESTA-SPEC-027) is derived from the handle string — so two entities claiming "koad" produce the same CID. The CID is not unique enough to be the canonical identity anchor.
+
+The globally unique identifier is the **key fingerprint**: the cryptographic hash of the entity's actual public key, generated at gestation and never derivable from the name. No two entities can share a fingerprint without breaking the cryptography.
+
+The canonical FUSE paths for application use are fingerprint-addressed:
+
+```
+/kingdoms/<key_fingerprint>/profile.json   ← identity record
+/kingdoms/<key_fingerprint>/avatar.png     ← identity bootstrap image
+/kingdoms/<key_fingerprint>/public/        ← their public namespace
+/kingdoms/<key_fingerprint>/shared/<fp2>/  ← shared space (bilateral, by fingerprint pair)
+```
+
+Named paths (`/kingdoms/koad/`) remain available as human-readable aliases. The FUSE layer resolves a name to its fingerprint on first lookup and caches the mapping.
+
+### 10.6 The Avatar as Identity Bootstrap
+
+The avatar at `/kingdoms/<fingerprint>/avatar.png` is not just an image. It contains embedded profile JSON — structured identity metadata carried inside the file itself (EXIF-style, or a purpose-built container format):
+
+```json
+{
+  "handle": "koad",
+  "fingerprint": "<key_fingerprint>",
+  "public_key": "...",
+  "cid": "GdYZWjcjY6Y2XonnM",
+  "kingdoms_url": "kingdoms://<fingerprint>/",
+  "bio": "...",
+  "bonds": ["<juno_fp>", "<vulcan_fp>"],
+  "updated": "2026-04-04T00:00:00Z"
+}
+```
+
+An application that loads the avatar gets the full identity context in one fetch. No separate profile API call. The avatar IS the meeting coordinate — portable, self-describing, verifiable against the fingerprint embedded in the metadata.
+
+### 10.7 Apps Use Coordinates, Not Names
+
+Named namespaces (`kingdoms://koad/`) are the human interface layer. Applications resolve once and operate on coordinates:
+
+```
+1. Human says: "connect to kingdoms://koad/alice"
+2. App resolves: "koad" → key fingerprint (via daemon lookup or avatar load)
+3. App stores: kingdoms://<fingerprint>/alice  ← this is what the app uses
+4. App loads: kingdoms://<fingerprint>/avatar.png → full identity context
+5. All future references use the fingerprint coordinate, never the name
+```
+
+This is identical to how DNS works at the network layer (name → IP, then IP is used) and how ENS works in Ethereum (name → address, then address is used). The name is for humans. The coordinate is for machines.
+
+The consequence: **name collisions are a UI problem, not a data integrity problem.** Two entities claiming "koad" present as two distinct fingerprint coordinates. Applications never confuse them. The interface boxes them into obvious containers (different avatars, different fingerprints shown) and the human picks the right one once. After that, the app uses the fingerprint.
+
+### 10.8 Recommendation
+
+- Humans: use handle paths in conversation (`kingdoms://koad/alice` — readable, speakable)
+- Applications: resolve to fingerprint coordinate immediately, store and use that
+- Permanent references (bonds, specs, issues): use fingerprint coordinate
+- The avatar is the canonical identity bootstrap — load it first, derive everything else from its embedded profile
 
 ---
 
