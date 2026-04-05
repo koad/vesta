@@ -299,7 +299,60 @@ For remote access to another entity's `public/`:
 
 ---
 
-## 7. Differences from Keybase KBFS
+## 7. Storage Backends (Pluggable, Self-Hosted)
+
+Keybase's KBFS stores files on AWS S3 — buckets that Keybase controls. When Keybase shuts down, the files are gone.
+
+kingdoms takes the opposite position: **each entity controls their own storage backend.** The daemon doesn't care what backs `/kingdoms/<entity>/` — it's a configuration decision per entity.
+
+### 7.1 Supported Backends
+
+| Backend | Use Case | Config Key |
+|---------|----------|------------|
+| **Local disk** | Default. `~/.kingdom-fs/<entity>/` on the entity's machine | `KINGDOMS_BACKEND=local` |
+| **S3-compatible** | AWS S3, Cloudflare R2, MinIO, Backblaze B2 | `KINGDOMS_BACKEND=s3` |
+| **NAS / network mount** | Synology, TrueNAS, NFS | `KINGDOMS_BACKEND=path:/mnt/nas/kingdoms/` |
+| **Distributed** | IPFS-pinned blobs (future) | `KINGDOMS_BACKEND=ipfs` |
+
+The daemon reads `KINGDOMS_BACKEND` from `.env` and routes all filesystem operations accordingly.
+
+### 7.2 Per-Entity Backend Configuration
+
+Each entity configures their own backing store independently:
+
+```env
+# ~/.juno/.env
+KINGDOMS_BACKEND=s3
+KINGDOMS_S3_BUCKET=juno-kingdoms
+KINGDOMS_S3_REGION=us-east-1
+KINGDOMS_S3_ENDPOINT=https://s3.amazonaws.com  # or MinIO, R2, etc.
+```
+
+```env
+# ~/.koad/.env (the human operator's daemon)
+KINGDOMS_BACKEND=local
+KINGDOMS_LOCAL_PATH=/mnt/nas/kingdoms/koad/
+```
+
+### 7.3 Bilateral Shared Space — Co-Hosted
+
+For shared spaces (Section 2.2), the bilateral store lives on one entity's backend by default — typically the one who initiated the shared space. The FUSE layer on the other entity's machine accesses it via the daemon peer protocol (SPEC-014).
+
+If both parties want redundancy, they can mirror: both backends hold a copy, and writes sync via daemon-to-daemon replication. The backing key (`shared:{koad,juno}`) is stable regardless of which replica serves a given request.
+
+### 7.4 Sovereignty Guarantee
+
+The storage is yours because:
+1. You configure the backend
+2. The credentials for the backend (S3 key, NAS password) stay in your `.env` — never leave your machine
+3. You can switch backends: `juno kingdoms migrate --to s3` moves the data
+4. You can export: `juno kingdoms export --path ./backup/` dumps everything to local disk
+
+If the daemon dies, the files are still in your S3 bucket / NAS / local path. No kingdoms.io to go down.
+
+---
+
+## 8. Differences from Keybase KBFS
 
 | Dimension | Keybase KBFS | kingdoms |
 |-----------|-------------|----------|
@@ -312,14 +365,15 @@ For remote access to another entity's `public/`:
 | Auth | Keybase identity service | Trust bonds (SPEC-007) + entity keys |
 | Git | `keybase://` protocol | `kingdoms://` protocol |
 | Git hosting | Keybase-hosted | Self-hosted in daemon |
+| Storage backend | AWS S3 (Keybase controls) | Pluggable per entity — local disk, S3 you own, NAS, etc. |
 | Encryption | NaCl (Keybase keys) | Entity Ed25519 keys |
-| Kill switch | Keybase shutdown = gone | Daemon on your machine = yours |
+| Kill switch | Keybase shutdown = gone | Storage is yours; daemon is yours; nothing to go down |
 
-The sovereignty difference is total: kingdoms is backed by your daemon, on your hardware, with your keys. There is no kingdoms.io to go down.
+The sovereignty difference is total: the files live where you put them, backed by keys you hold, served by a daemon running on your hardware.
 
 ---
 
-## 8. URL as Meeting Coordinate
+## 9. URL as Meeting Coordinate
 
 The `kingdoms://` URL is a meeting coordinate (VESTA-SPEC-028). Two entities with separate kingdom installations can share a repo path:
 
@@ -336,7 +390,7 @@ This enables:
 
 ---
 
-## 9. Implementation Plan
+## 10. Implementation Plan
 
 ### Phase 1: Local namespace (no FUSE)
 
@@ -371,7 +425,7 @@ Daemon exposes `/api/v1/cid/<cid>` → returns kingdoms URL. Enables `kingdoms:/
 
 ---
 
-## 10. Open Questions
+## 11. Open Questions
 
 1. **Private namespace encryption**: Are files in `private/` encrypted at rest? If daemon is compromised, are private files exposed? (Probably yes for phase 1 — trust the daemon. Encryption at rest is a later phase.)
 
