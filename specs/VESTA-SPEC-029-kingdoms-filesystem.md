@@ -390,7 +390,61 @@ This enables:
 
 ---
 
-## 10. Implementation Plan
+## 10. Handle Collisions
+
+### 10.1 No Global Namespace Registry
+
+Handles are not globally unique. Anyone can run a daemon and call themselves "koad". There is no central registrar to appeal to. This is intentional — sovereign infrastructure cannot have a namespace authority.
+
+### 10.2 Identity Is Cryptographic, Not Lexical
+
+Behind every handle is a cryptographic identity: the entity's Ed25519 public key, which produces a CID (VESTA-SPEC-027). The CID is derived from the identity, not the name. It cannot be faked or collided without breaking the cryptography.
+
+The FUSE layer tracks both:
+
+```
+/kingdoms/koad/                    ← handle alias (ambiguous if collision in ring)
+/kingdoms/GdYZWjcjY6Y2XonnM/      ← CID path (always unambiguous, always canonical)
+```
+
+Both paths resolve to the same entity when there is no collision. When there is a collision, the CID path always resolves correctly. The handle path falls to the entity you bonded with first, or to an explicit preference in your daemon config.
+
+### 10.3 Collision Presentation
+
+When two entities in your ring both claim handle "koad":
+
+```
+/kingdoms/koad/           ← first-bonded entity (your daemon's preference)
+/kingdoms/koad~Gd7Z/      ← second entity (CID prefix as disambiguator)
+/kingdoms/GdYZWjcjY6Y2XonnM/  ← always resolves the first precisely
+/kingdoms/Ab3Xmn7RqKYdPwL/    ← always resolves the second precisely
+```
+
+The `kingdoms://` protocol handles this the same way:
+
+```bash
+git clone kingdoms://koad/alice           # resolves via your bonded preference
+git clone kingdoms://GdYZWjcjY6Y2XonnM/alice  # always precise
+```
+
+### 10.4 Social Resolution
+
+The ring is the enforcement layer. There is no appeal to a central authority because there is no central authority. But:
+
+- Your peers can see your bonded entities and their claimed handles
+- If someone in your ring is squatting a handle that causes confusion, your peers tell them directly
+- A peer who refuses to rename can be unbonded — their namespace disappears from your ring
+- The web of trust determines whose "koad" is the one that propagates
+
+A sufficiently well-known entity (like the real koad) will have many bonds attesting to their CID. An impersonator will have few or none. The ring's collective memory resolves the ambiguity without any registrar involved.
+
+### 10.5 Recommendation
+
+Always share CID paths in permanent contexts (trust bonds, specs, issues). Share handle paths in conversation — they're for humans. The CID is the ground truth.
+
+---
+
+## 11. Implementation Plan
 
 ### Phase 1: Local namespace (no FUSE)
 
@@ -425,7 +479,7 @@ Daemon exposes `/api/v1/cid/<cid>` → returns kingdoms URL. Enables `kingdoms:/
 
 ---
 
-## 11. Open Questions
+## 12. Open Questions
 
 1. **Private namespace encryption**: Are files in `private/` encrypted at rest? If daemon is compromised, are private files exposed? (Probably yes for phase 1 — trust the daemon. Encryption at rest is a later phase.)
 
