@@ -7,7 +7,7 @@
 meta:
   generated: 2026-04-05
   generated_by: vesta
-  spec_count: 49
+  spec_count: 53
   protocol_areas:
     - "1: Entity Model"
     - "2: Gestation Protocol"
@@ -19,6 +19,7 @@ meta:
     - "8: Inter-Entity Communications"
     - "9: Daemon"
     - "10: Package Layer"
+    - "11: Alice Curriculum"
 
 specs:
 
@@ -429,6 +430,51 @@ specs:
     updated: 2026-04-05
     description: "Protocol for running community fork experiments: three experiment types, reporting channels, tracking schema, consent protocol, Sibyl synthesis brief format, Day 20 post selection decision gate, and longitudinal tracking."
 
+  - id: VESTA-SPEC-044
+    title: "Alice Conversation Protocol — Session Model, Completion Write Contract, State Format"
+    file: VESTA-SPEC-044-alice-conversation-protocol.md
+    status: canonical
+    area: "11: Alice Curriculum"
+    applies_to: "Alice (writer), Vulcan (reader), Chiron (content author)"
+    created: 2026-04-05
+    updated: 2026-04-05
+    resolves: "Muse brief open question: session model from daemon/data layer"
+    description: "Session lifecycle, session state format (~/.alice/learners/{uuid}/), completion write contract, accelerated assessment path, and Alice/Vulcan boundary of authority. Alice writes; Vulcan reads; never the reverse."
+
+  - id: VESTA-SPEC-045
+    title: "Daemon Dashboard Data Contract — DDP Subscriptions, HTTP Endpoints, PassengerJobs Collection"
+    file: VESTA-SPEC-045-daemon-dashboard-data-contract.md
+    status: canonical
+    area: "9: Daemon"
+    applies_to: "Vulcan (implementation), daemon server"
+    created: 2026-04-05
+    updated: 2026-04-05
+    related-to: VESTA-SPEC-009-DAEMON
+    resolves: "Muse brief 2026-04-05-daemon-dashboard.md Implementation Notes — formalizes data contracts"
+    description: "Four DDP publications (daemon.overview, entity.roster, entity.activity.feed, passenger.queue), PassengerJobs and DaemonActivity collection schemas, extended /health response shape. Extends VESTA-SPEC-009 §8.3."
+
+  - id: VESTA-SPEC-046
+    title: "MVP Zone Ops Digest Format — Weekly Field Report in koad/insiders"
+    file: VESTA-SPEC-046-mvp-zone-ops-digest-format.md
+    status: canonical
+    area: "8: Inter-Entity Communications"
+    applies_to: "Juno (author), Vulcan (implementation), ring members (readers)"
+    created: 2026-04-05
+    updated: 2026-04-05
+    resolves: "Muse MVP Zone brief §2: implementation approach — formalizes digest format and API contract"
+    description: "digests/YYYY-WW.md format in koad/insiders private repo. Frontmatter schema, required body sections (What shipped / What's blocked / What's in progress / Week ahead), Meteor server methods (insiders.getDigest, insiders.listDigests), authorization gate."
+
+  - id: VESTA-SPEC-047
+    title: "Alice Session Sync Model — Cross-Device Constraint Documentation and Decision Boundary"
+    file: VESTA-SPEC-047-alice-session-sync-model.md
+    status: constraint-documented
+    area: "11: Alice Curriculum"
+    applies_to: "Alice, Vulcan, future sync infrastructure"
+    created: 2026-04-05
+    updated: 2026-04-05
+    resolves: "Muse multi-device question in alice-ui-design-brief.md"
+    description: "Documents the cross-device constraint for Alice learner state. Phase 1 decision: single-device, no sync. Sovereignty risk assessment of available sync options. Phase 1 recovery paths (UUID-based, manual transfer). Future sync constraints (kingdoms-compatible, local-primary, no mandatory accounts)."
+
   # --- Specs without assigned VESTA-SPEC-NNN IDs ---
 
   - id: null
@@ -520,6 +566,7 @@ specs:
 # Area 5: Cascade Environment  — SPEC-005 (canonical)
 # Area 6: Commands System      — SPEC-006 (canonical)
 # Area 7: Spawning / Lifecycle — SPEC-008-SPAWN (canonical), SPEC-010 (canonical), SPEC-011 (canonical), SPEC-020-HOOKS (canonical), several others
-# Area 8: Inter-Entity Comms   — SPEC-008-COMMS (canonical), SPEC-016 (canonical), SPEC-025 (draft), SPEC-028 (draft), SPEC-042 (canonical), SPEC-043 (canonical)
-# Area 9: Daemon               — SPEC-009 (canonical), SPEC-014 (canonical), SPEC-018 (canonical), SPEC-027 (stable), SPEC-029/030/031 (draft)
+# Area 8: Inter-Entity Comms   — SPEC-008-COMMS (canonical), SPEC-016 (canonical), SPEC-025 (draft), SPEC-028 (draft), SPEC-042 (canonical), SPEC-043 (canonical), SPEC-046 (canonical)
+# Area 9: Daemon               — SPEC-009 (canonical), SPEC-014 (canonical), SPEC-018 (canonical), SPEC-027 (stable), SPEC-029/030/031 (draft), SPEC-045 (canonical)
 # Area 10: Package Layer       — SPEC-034 (canonical)
+# Area 11: Alice Curriculum    — SPEC-044 (canonical), SPEC-047 (constraint-documented)
