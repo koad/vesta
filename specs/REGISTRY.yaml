@@ -7,7 +7,7 @@
 meta:
   generated: 2026-04-05
   generated_by: vesta
-  spec_count: 44
+  spec_count: 49
   protocol_areas:
     - "1: Entity Model"
     - "2: Gestation Protocol"
@@ -376,6 +376,59 @@ specs:
     updated: 2026-04-05
     description: "Permission table mapping entity+host combinations to authorized actions. Complements trust bonds (WHAT) with host authorization (WHERE)."
 
+  - id: VESTA-SPEC-039
+    title: "trust/public-chain.json — Build Artifact for Trust Bond Visualization"
+    file: VESTA-SPEC-039-trust-public-chain-json.md
+    status: canonical
+    area: "4: Trust Bonds"
+    applies_to: "all entities with trust/bonds/, Vulcan (build tooling), TrustBondChain component"
+    created: 2026-04-05
+    updated: 2026-04-05
+    resolves: "Muse brief 2026-04-05-trust-bond-visualization.md Open Question 2"
+    description: "Schema, generation rules, and consumption contract for the trust/public-chain.json build artifact — decouples trust bond visualization from private repo API access."
+
+  - id: VESTA-SPEC-040
+    title: "check-prereqs.sh — Operator Prerequisite Verification Script Contract"
+    file: VESTA-SPEC-040-check-prereqs-script.md
+    status: canonical
+    area: "2: Gestation Protocol"
+    applies_to: "koad (maintainer), Vulcan (implementation), all new operators"
+    created: 2026-04-05
+    updated: 2026-04-05
+    resolves: "Muse brief 2026-04-05-get-started-flow.md Open Question 1"
+    description: "Output contract, exit codes, version requirements, safety invariants, and location spec for the get-started prerequisite check script."
+
+  - id: VESTA-SPEC-041
+    title: "/get-started Page Data Contract"
+    file: VESTA-SPEC-041-get-started-page-data-contract.md
+    status: canonical
+    area: "1: Entity Model"
+    applies_to: "Vulcan (implementation), kingofalldata.com site"
+    created: 2026-04-05
+    updated: 2026-04-05
+    resolves: "Muse brief 2026-04-05-get-started-flow.md Open Questions 2, 3, 5"
+    description: "Data contract for the /get-started page: which data comes from GitHub API, what is static, session state contract, URL fragment routing, and degradation rules for not-yet-live routes."
+
+  - id: VESTA-SPEC-042
+    title: "Entity Intro Video Format — 'Meet the Entity' Series"
+    file: VESTA-SPEC-042-entity-intro-video-format.md
+    status: canonical
+    area: "8: Inter-Entity Communications"
+    applies_to: "Rufus (production), Mercury (distribution), koad (recording)"
+    created: 2026-04-05
+    updated: 2026-04-05
+    description: "Formal spec for the Meet the Entity video series: segment structure, timing, capture requirements, production record schema, distribution manifest schema, and handoff protocol. Derived from ~/.rufus/ENTITY-INTRO-SERIES.md."
+
+  - id: VESTA-SPEC-043
+    title: "Community Fork Experiment Protocol"
+    file: VESTA-SPEC-043-community-fork-experiment-protocol.md
+    status: canonical
+    area: "8: Inter-Entity Communications"
+    applies_to: "Juno (coordination), Sibyl (research), Faber (editorial), Mercury (distribution), Argus (monitoring)"
+    created: 2026-04-05
+    updated: 2026-04-05
+    description: "Protocol for running community fork experiments: three experiment types, reporting channels, tracking schema, consent protocol, Sibyl synthesis brief format, Day 20 post selection decision gate, and longitudinal tracking."
+
   # --- Specs without assigned VESTA-SPEC-NNN IDs ---
 
   - id: null
@@ -460,13 +513,13 @@ specs:
     description: "Comprehensive signing and identity layer specification using Keybase + Saltpack"
 
 # --- Protocol area coverage summary ---
-# Area 1: Entity Model         — SPEC-001 (canonical), SPEC-013 (canonical), SPEC-019 (draft), SPEC-026 (draft)
-# Area 2: Gestation Protocol   — SPEC-002 (canonical), SPEC-003 (canonical)
+# Area 1: Entity Model         — SPEC-001 (canonical), SPEC-013 (canonical), SPEC-019 (draft), SPEC-026 (draft), SPEC-041 (canonical)
+# Area 2: Gestation Protocol   — SPEC-002 (canonical), SPEC-003 (canonical), SPEC-040 (canonical)
 # Area 3: Template Substitution — SPEC-003 (canonical)
-# Area 4: Trust Bonds          — SPEC-007 (canonical), SPEC-017 (canonical), SPEC-024 (canonical), SPEC-038 (canonical), several unnumbered (canonical)
+# Area 4: Trust Bonds          — SPEC-007 (canonical), SPEC-017 (canonical), SPEC-024 (canonical), SPEC-038 (canonical), SPEC-039 (canonical), several unnumbered (canonical)
 # Area 5: Cascade Environment  — SPEC-005 (canonical)
 # Area 6: Commands System      — SPEC-006 (canonical)
 # Area 7: Spawning / Lifecycle — SPEC-008-SPAWN (canonical), SPEC-010 (canonical), SPEC-011 (canonical), SPEC-020-HOOKS (canonical), several others
-# Area 8: Inter-Entity Comms   — SPEC-008-COMMS (canonical), SPEC-016 (canonical), SPEC-025 (draft), SPEC-028 (draft)
+# Area 8: Inter-Entity Comms   — SPEC-008-COMMS (canonical), SPEC-016 (canonical), SPEC-025 (draft), SPEC-028 (draft), SPEC-042 (canonical), SPEC-043 (canonical)
 # Area 9: Daemon               — SPEC-009 (canonical), SPEC-014 (canonical), SPEC-018 (canonical), SPEC-027 (stable), SPEC-029/030/031 (draft)
 # Area 10: Package Layer       — SPEC-034 (canonical)
