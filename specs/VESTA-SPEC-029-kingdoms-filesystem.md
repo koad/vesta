@@ -108,6 +108,56 @@ Zero configuration. Zero explicit linking. The URL IS the address. Stand on the 
 
 This is the filesystem layer of the context bubble architecture. The CID is the stable coordinate. The kingdoms namespace is the store. The passenger is the reader.
 
+### 2.5 Agent-Curated Warnings and Reputation
+
+The URL-CID namespace is also where agents file **curated intelligence** about URLs — warnings, reputation data, sourced citations from known authorities:
+
+```
+/kingdoms/GdYZWjcjY6Y2XonnM/
+  augments/                    ← personal browser augments
+  warnings/
+    sibyl.json                 ← Sibyl's research-based warnings
+    rossman.json               ← sourced from Rossman's consumer rights wiki
+    veritas.json               ← Veritas fact-check results
+  reputation/
+    summary.json               ← aggregated ring reputation
+    sources.json               ← citation index (external authoritative sources)
+  citations/
+    rossman-wiki/              ← pulled articles from Ross Mann's wiki
+    gdpr-violations/           ← GDPR enforcement database entries
+    bbb-complaints/            ← BBB complaint data
+```
+
+**How it works:**
+
+Sibyl runs a standing worker that:
+1. Monitors configured external sources (Rossman wiki, GDPR tracker, scam databases, etc.)
+2. For each URL mentioned, derives the CID
+3. Writes a structured entry to `/kingdoms/<url_cid>/warnings/<source>.json`
+4. Commits and pushes to the ring
+
+When the passenger loads a URL:
+1. Derives CID
+2. Loads `/kingdoms/<url_cid>/warnings/` across all entities in the ring it has bonds with
+3. Surfaces relevant warnings in the browser UI — inline, non-intrusive, source-attributed
+
+**The sovereignty difference from centralized warning systems:**
+
+| System | Who decides what gets flagged | Who controls the data |
+|--------|------------------------------|----------------------|
+| Google Safe Browsing | Google | Google |
+| Web of Trust (WOT) | Crowd + WOT company | WOT company |
+| Browser vendor warnings | Browser vendor | Browser vendor |
+| kingdoms warnings | Your ring + agents you authorized | You, on your daemon |
+
+No central authority can unflag a URL to protect a business relationship. No vendor can silence a warning you filed. The ring's collective intelligence is yours. The sources are ones you chose to hook in.
+
+**Ring-scoped reputation:**
+
+Warnings written by Sibyl in koad's ring appear at `/kingdoms/koad/shared/juno/` (bilateral) or directly at the URL-CID namespace — visible to everyone in the ring with a bond. A peer ring from a journalist or researcher who shares bonds with koad can also pull these in, extending the reputation graph without any central aggregator.
+
+This is Web of Trust done right: trust-scoped, source-attributed, agent-maintained, sovereign.
+
 ---
 
 ### 2.1 Visibility Tiers
