@@ -535,6 +535,57 @@ The CID (VESTA-SPEC-027) is derived from the handle string — so two entities c
 
 The globally unique identifier is the **key fingerprint**: the cryptographic hash of the entity's actual public key, generated at gestation and never derivable from the name. No two entities can share a fingerprint without breaking the cryptography.
 
+#### 10.5.1 Key Fingerprint Computation
+
+The key fingerprint used as a kingdoms namespace coordinate is computed from the entity's **Ed25519 identity key** — the key at `~/.{entity}/id/ed25519.pub`, generated at gestation.
+
+**Algorithm:** SHA-256 of the raw Ed25519 public key bytes, encoded as lowercase hex (64 characters).
+
+```bash
+# Derivation (reference implementation)
+KEY_BYTES=$(openssl pkey -in ~/.juno/id/ed25519.pub -pubin -outform DER 2>/dev/null \
+  | tail -c 32)
+# Last 32 bytes of DER-encoded Ed25519 public key = raw key bytes
+
+FINGERPRINT=$(echo -n "$KEY_BYTES" | sha256sum | awk '{print $1}')
+# Output: 64-character lowercase hex string
+# Example: a3f7c1b2e9d04568f8a2c4e1d7b3f509c8e2a1d6b4f7c3e9a0d2b5f1c8e4a7d3
+```
+
+**Alternative (GPG format):** For entities using GPG as their signing key, the standard GPG fingerprint (SHA-1 of the OpenPGP key packet, or SHA-256 for v5 keys) may be used in contexts where GPG tooling is the primary interface. However, the Ed25519 SHA-256 fingerprint above is the canonical kingdoms namespace coordinate.
+
+**Format constraints:**
+- Length: exactly 64 hex characters (256 bits)
+- Encoding: lowercase hex, no separators, no spaces
+- Derivation: deterministic from the public key — same key always produces the same fingerprint
+- Uniqueness: collision resistance provided by SHA-256 (2^128 preimage resistance)
+
+**Stability:**
+- The fingerprint is stable for the lifetime of the key pair
+- If a key is rotated (compromised or expired), the new key produces a new fingerprint and therefore a new canonical namespace path
+- Migrations after key rotation: the old fingerprint path is preserved read-only as an archive namespace; the new fingerprint path is the live namespace. A signed redirect document at the old path points to the new one
+
+#### 10.5.2 FUSE Name-to-Fingerprint Resolution
+
+The FUSE layer maintains a handle-to-fingerprint mapping table:
+
+```
+~/.koad-io/.kingdoms-registry/
+  handles.json    ← { "koad": "a3f7c1b2...", "juno": "b4e8d2f9...", ... }
+  bonds/          ← cached trust bonds used to populate the table
+```
+
+Resolution order on first lookup of `/kingdoms/koad/`:
+
+1. Check `handles.json` for cached mapping
+2. If not found: query connected peer daemons for entity claiming handle "koad"
+3. Load entity's avatar bootstrap (§10.6) — extract embedded `fingerprint` field
+4. Verify: re-derive fingerprint from the embedded public key; confirm match
+5. Cache `koad → <fingerprint>` in `handles.json`
+6. Serve the FUSE path via the fingerprint subtree
+
+On collision (two daemons claim the same handle), both are registered with disambiguation suffixes per §10.3. The first-bonded entity retains the plain handle alias.
+
 The canonical FUSE paths for application use are fingerprint-addressed:
 
 ```
@@ -587,6 +638,113 @@ The consequence: **name collisions are a UI problem, not a data integrity proble
 - Applications: resolve to fingerprint coordinate immediately, store and use that
 - Permanent references (bonds, specs, issues): use fingerprint coordinate
 - The avatar is the canonical identity bootstrap — load it first, derive everything else from its embedded profile
+
+---
+
+## 10.9 Memory Portability — Claude Code and Cross-Machine Entity Context
+
+This section maps the kingdoms filesystem to the specific use case of Claude Code entity memory portability (koad/vesta#62, koad/vesta#77).
+
+### 10.9.1 Memory Classification
+
+Entity memory files fall into two categories:
+
+| File / Directory | Classification | Travel? | Kingdoms path |
+|-----------------|----------------|---------|---------------|
+| `~/.{entity}/memories/*.md` | Entity memory (long-term) | Yes — committed to entity git repo | In entity repo, synced via `git pull` |
+| `~/.claude/projects/<hash>/memory/MEMORY.md` | Session memory (Claude Code project memory) | Yes — maps to kingdoms private namespace | `/kingdoms/<entity>/private/claude-memory/<project-hash>/` |
+| `~/.claude/settings.json` | Harness config | Yes, with per-machine overrides | `/kingdoms/<entity>/private/claude-config/settings.json` |
+| `~/.claude/projects/<hash>/*.jsonl` | Session conversation history | No — local only | Not synced; stays on originating machine |
+| `~/.claude/todos/` | In-session task state | No — local only | Not synced |
+| `~/.{entity}/.env` | Entity config | Partial — non-secret fields only | Entity repo; secrets stay in `.credentials` (gitignored) |
+
+**Principle:** If it survives a session boundary and would cause context loss without it, it travels. If it is session-ephemeral or contains secrets, it stays local.
+
+### 10.9.2 Symlink Recipe — Claude Code Memory to Kingdoms
+
+To make Claude Code project memory portable across machines, the memory directory is replaced with a symlink into the kingdoms filesystem:
+
+```bash
+# On each machine, after kingdoms is mounted:
+
+# 1. Identify the Claude Code project hash for the entity directory
+# Claude Code hashes the absolute path: /home/koad/.juno → hash
+PROJECT_HASH=$(python3 -c "
+import hashlib, sys
+path = sys.argv[1]
+print(hashlib.sha256(path.encode()).hexdigest()[:32])
+" "/home/koad/.juno")
+
+# Note: actual hash algorithm used by Claude Code may differ — check
+# ~/.claude/projects/ directory names against your entity paths
+
+# 2. Ensure the kingdoms path exists
+mkdir -p /kingdoms/juno/private/claude-memory/$PROJECT_HASH/
+
+# 3. Back up any existing local memory
+cp -r ~/.claude/projects/$PROJECT_HASH/memory/ \
+       /kingdoms/juno/private/claude-memory/$PROJECT_HASH/backup-$(date +%Y%m%d)/
+
+# 4. Replace local memory dir with symlink
+rm -rf ~/.claude/projects/$PROJECT_HASH/memory/
+ln -s /kingdoms/juno/private/claude-memory/$PROJECT_HASH/ \
+       ~/.claude/projects/$PROJECT_HASH/memory
+
+# 5. Verify
+ls -la ~/.claude/projects/$PROJECT_HASH/memory/
+# Should show the kingdoms-backed memory files
+```
+
+### 10.9.3 Bootstrap Sequence for a New Machine
+
+When setting up kingdoms on a new machine for the first time:
+
+```bash
+# 1. Install daemon and mount kingdoms
+koad kingdoms mount
+
+# 2. Pull entity repos
+cd ~/.juno && git pull   # long-term entity memories are here
+
+# 3. Set up Claude Code memory symlinks
+# Run the symlink recipe (§10.9.2) for each entity
+
+# 4. Verify memory continuity
+# Start Claude Code; it should load MEMORY.md from kingdoms path
+claude --print "What is in my memory?" --project ~/.juno
+```
+
+After this sequence, the memory state from any other machine where the same kingdoms namespace was mounted is immediately available. The entity continues with full context regardless of which machine it runs on.
+
+### 10.9.4 Security Model for Memories
+
+Entity memories may contain sensitive operational context: API endpoints, project state, trust bond references, operational decisions.
+
+**Recommended kingdoms backend for memories:** `private/` namespace backed by local disk or encrypted-at-rest storage. Do NOT store memories in:
+- `public/` — world-readable
+- S3 with public-read ACL — equivalent to public
+
+**Recommended storage config:**
+
+```env
+# ~/.{entity}/.env
+KINGDOMS_BACKEND=local
+KINGDOMS_LOCAL_PATH=/home/koad/.kingdom-fs/juno/
+# local disk; FUSE layer enforces private/ access control
+# Files are readable only by the entity's Unix UID
+```
+
+For entities on multiple machines, a private S3-compatible bucket with entity-key encryption is appropriate:
+
+```env
+KINGDOMS_BACKEND=s3
+KINGDOMS_S3_BUCKET=juno-private-kingdoms
+KINGDOMS_S3_ENCRYPTION=aes256   # or entity key
+```
+
+The kingdoms FUSE layer provides access control at the namespace level. The storage backend provides encryption at rest. Both layers operate independently — a compromised daemon can breach the namespace ACL, but cannot read encrypted blobs without the entity key.
+
+**Entity memory is classified as PRIVATE by default.** Any tool or agent writing to `~/.{entity}/memories/` or to a kingdoms-backed Claude Code memory path must treat the content as private unless explicitly reclassified.
 
 ---
 

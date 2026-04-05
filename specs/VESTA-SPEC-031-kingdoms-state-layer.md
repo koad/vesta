@@ -23,6 +23,8 @@ altitude: 50k
 
 ## 1. The Problem with Astro's MongoDB
 
+**Note on "Astro":** This spec references an entity called "Astro" as the first daemon+MongoDB deployment in the koad:io ecosystem. As of 2026-04-05, Astro is not part of the canonical team roster in `~/.juno/TEAM_STRUCTURE.md`. Astro appears to be either (a) a pre-existing sovereign entity outside the current team that koad operates independently, or (b) a historical reference from before formal entity naming conventions were established. The spec uses Astro as a concrete motivating example; the architectural pattern applies regardless of whether Astro is a formal team entity. If/when Astro is formally gestated as a team entity, this spec should be updated with a cross-reference. See koad/vesta#75 for tracking.
+
 Astro was the first entity to run a daemon with MongoDB. The state landed there. A dozen PWAs connect to Astro's DDP endpoint. It works — but the state belongs to Astro's namespace, not to the work being done. When more entities join, they either share Astro's database (wrong owner) or run isolated databases (fragmented state).
 
 The state should belong to the namespace it describes.
@@ -264,6 +266,27 @@ The daemon coordinates the stripe. Reads go to whichever device has the block. W
 For community namespaces: member devices can contribute storage to the community pool. `/kingdoms/wonderland/databases/state` is striped across the storage backends of member daemons that have opted in. The community's total storage capacity is the sum of what members contribute.
 
 This is deferred — RAID coordination is non-trivial. But the shape is correct: the daemon peer network already provides the connectivity; the storage backend abstraction (SPEC-029 §7) already provides the pluggability. RAID-0 is a backend implementation that sits between them.
+
+### 10.1 Reconciliation with SPEC-009 Single-Daemon-Per-Machine
+
+**Issue (koad/vesta#78):** SPEC-009 specifies one daemon instance per physical machine. The RAID-0 model above involves multiple machines cooperating. Does this conflict?
+
+**Resolution: No conflict.** The RAID-0 model operates at a layer *above* the per-machine daemon constraint:
+
+- **SPEC-009 rule:** One daemon process runs per machine. On thinker, one daemon. On flowbie, one daemon. On fourty4, one daemon. No machine runs two daemon processes.
+- **RAID-0 behavior:** The per-machine daemons communicate with each other via the peer network (SPEC-014). Each daemon manages only its own machine's storage backend. The stripe coordination is inter-daemon, not intra-machine.
+
+The architecture is:
+
+```
+thinker daemon   ←─ peer protocol ─→   flowbie daemon
+                                              ↕
+                                         fourty4 daemon
+```
+
+Each daemon stores its assigned stripe shards locally. When the FUSE layer on thinker reads a block stored on flowbie, it requests it from flowbie's daemon over the peer network. There is no "super-daemon" on multiple machines. The stripe is a logical abstraction over the three separate, SPEC-009-compliant daemons.
+
+**Summary:** SPEC-009's single-daemon-per-machine principle is preserved. RAID-0 is a multi-machine coordination feature, not a multi-process-per-machine feature. The two specs are compatible.
 
 ---
 

@@ -283,7 +283,40 @@ No admin intervention. No registrar arbitration. The trust ring routes through p
 
 ## 10. Open Questions
 
-1. **Quorum without a central clock**: Git commits have timestamps but they can be forged. How do we establish a reliable voting window? (Possible: block height from a public chain as neutral timestamp anchor.)
+1. **Quorum without a central clock (koad/vesta#79 — RESOLVED)**: Git commits have timestamps but they can be forged. ~~How do we establish a reliable voting window?~~
+
+   **Resolution:** Use a **neutral external timestamp anchor** rather than git commit timestamps. Two options, in order of preference:
+
+   **Option A — Public blockchain block height (recommended for high-stakes governance):**
+   A governance proposal includes a starting block height from a public chain (Bitcoin or Ethereum mainnet). The voting window is defined in block units, not wall-clock time:
+
+   ```markdown
+   ## Proposal: 2026-04-budget
+   opens: BTC block 889000
+   window: 144 blocks (~24h at 10min/block)
+   closes: BTC block 889144
+   ```
+
+   A vote commit is valid if and only if it was created between the open and close block heights — verified by checking that the commit's GPG signature timestamp (which the signer controls but cannot backdate without detection) falls within the window, cross-referenced against the block header timestamps (which are set by the network, not the voter). A voter who tries to backdate a commit must also backdate the block headers, which is computationally infeasible on Bitcoin mainnet.
+
+   This does not require storing anything on-chain. The block heights are public read-only anchors. The votes live in git. The chain provides the unforgeable clock.
+
+   **Option B — Trusted external timestamp (acceptable for low-stakes communities):**
+   The proposal opener fetches a signed timestamp from a neutral timestamping authority (RFC 3161) and embeds it in the proposal commit. The closing timestamp is fetched by the steward who merges. Both timestamps are committed alongside the proposal.
+
+   ```bash
+   # RFC 3161 timestamp for a commit
+   git log -1 --format="%H" | openssl ts -query -data - -cert -sha256 \
+     | curl -s -H "Content-Type: application/timestamp-query" \
+            --data-binary @- https://freetsa.org/tsr > proposal-open.tsr
+   git add proposal-open.tsr && git commit --amend --no-edit
+   ```
+
+   The `.tsr` file is a cryptographically verifiable timestamp from a third-party TSA. It cannot be forged retroactively.
+
+   **Default for MVP Zone:** Option B (RFC 3161) is simpler to implement and sufficient for communities where members are already in a trust ring. Option A is recommended once the kingdoms daemon can perform block height lookups autonomously.
+
+   **In both cases:** Governance rules in `GOVERNANCE.md` must specify which anchoring method the community uses. Mixing methods within a single community is not permitted.
 
 2. **Large communities**: At 10,000 members, the shared/ namespace structure becomes unwieldy. How does it scale? (Possible: sub-communities with their own namespaces, nested in the parent.)
 

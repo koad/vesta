@@ -4,7 +4,7 @@ id: VESTA-SPEC-007
 title: "Trust Bond Protocol"
 type: spec
 created: 2026-04-03
-updated: 2026-04-03
+updated: 2026-04-05
 owner: vesta
 description: "Canonical protocol for trust bonds — signed authorization documents that establish entity relationships and delegation of authority"
 ---
@@ -48,6 +48,9 @@ Each bond has a **type** that defines the category of relationship and the scope
 | **peer** | authorized-agent | Coordinate on shared domains | Both grantor and grantor's superior | Peers do not assign work to each other; they align by agreement. |
 | **customer** | authorized-agent | Limited access to products or services | Grantor only | No authority to issue downstream bonds or access system internals. |
 | **member** | authorized-agent | Community participation and coordination | Grantor only | Community member status; may include communication channels and shared resources. |
+| **filesystem-access** | Entity (namespace owner) | Read/write access to specific kingdoms namespace paths | Grantor | Used by SPEC-029 (Kingdoms Filesystem) to grant FUSE-level access. Scoped to explicit path list. |
+| **community-member** | Community entity or founding steward | Tiered access to a community namespace | Grantor (steward or founder) | Used by SPEC-030. Carries membership tier (member/contributor/steward/founder) and access scope. |
+| **kingdom-peer** | Entity (via daemon) | Daemon-to-daemon connectivity for kingdoms state sync | Both parties | Used by SPEC-031. Grants peer access to DDP state layer and kingdoms cache operations. Rate-limit and scope fields mandatory. |
 
 ## 3. Bond Document Format
 
@@ -57,7 +60,7 @@ Every bond document begins with a YAML frontmatter block containing metadata:
 
 ```yaml
 ---
-type: authorized-agent | authorized-builder | peer | customer | member
+type: authorized-agent | authorized-builder | peer | customer | member | filesystem-access | community-member | kingdom-peer
 from: <entity-name or person-name> (<email-or-contact>)
 to: <entity-name or person-name> (<email-or-contact>)
 status: DRAFT | ACTIVE | REVOKED
@@ -69,7 +72,7 @@ renewal: <renewal-type> | <YYYY-MM-DD> | never
 
 ### Required Fields
 
-- **type** — One of the bond types (Section 2)
+- **type** — One of the bond types (Section 2): `authorized-agent`, `authorized-builder`, `peer`, `customer`, `member`, `filesystem-access`, `community-member`, `kingdom-peer`
 - **from** — Full name and contact info of the grantor (entity or person)
 - **to** — Full name and contact info of the grantee (entity or person)
 - **status** — Current state of the bond (DRAFT, ACTIVE, or REVOKED)
@@ -526,6 +529,113 @@ A member bond grants participation in the community, access to shared resources 
 - No financial or administrative authority
 - Can be revoked if community standards are violated
 
+### 10.6 filesystem-access
+
+**Grantor:** The entity that owns the kingdoms namespace  
+**Issued to:** Any entity or person requesting access to that namespace  
+**Authority:** Read and/or write access to specific paths within `/kingdoms/<entity>/`  
+**Revocable by:** Grantor
+
+A filesystem-access bond grants access to named paths inside the kingdoms filesystem (VESTA-SPEC-029). It is distinct from other bond types because it operates at the FUSE layer: the daemon reads this bond at mount time and enforces it on every filesystem call.
+
+**Required additional fields:**
+
+```yaml
+---
+type: filesystem-access
+from: juno
+to: koad
+paths:
+  - /kingdoms/juno/shared/koad/
+access: read-write   # or: read-only
+created: 2026-04-05
+---
+```
+
+- `paths` — explicit list of namespace paths the grantee may access; wildcards not permitted
+- `access` — `read-only` or `read-write`
+
+**Key attributes:**
+- Access is path-scoped, not namespace-wide
+- No downstream authority; cannot be sub-delegated
+- Revocation takes effect within 5 minutes (FUSE cache flush period)
+- Separate from organizational bonds — a peer bond does not imply filesystem-access
+
+### 10.7 community-member
+
+**Grantor:** Community entity or its designated steward/founder  
+**Issued to:** Community members (entities or persons)  
+**Authority:** Tiered access to a community namespace (VESTA-SPEC-030)  
+**Revocable by:** Grantor (steward or founder)
+
+A community-member bond registers membership in a community namespace. The bond carries a tier field that determines write access, proposal rights, and merge authority as specified in SPEC-030 §3.
+
+**Required additional fields:**
+
+```yaml
+---
+type: community-member
+from: mvpzone
+to: alice
+namespace: /kingdoms/mvpzone/
+access:
+  - /kingdoms/mvpzone/public/        read-write
+  - /kingdoms/mvpzone/shared/alice/  read-write
+  - /kingdoms/mvpzone/private/       read-only
+granted-by: juno                     # the human-readable steward who approved
+tier: member | contributor | steward | founder
+created: 2026-04-05
+---
+```
+
+- `namespace` — the community namespace root path
+- `access` — explicit list of path+permission pairs
+- `granted-by` — the steward or founder who approved the membership
+- `tier` — membership tier; determines governance rights (see SPEC-030 §3.1)
+
+**Key attributes:**
+- Cannot issue downstream bonds
+- Tier upgrades require a new signed bond (re-issue, don't modify in place)
+- Revocation is a governance action — committed to the community's git log
+- Revocation cascades to remove all filesystem-access derived from this bond
+
+### 10.8 kingdom-peer
+
+**Grantor:** Any entity (typically the local daemon owner)  
+**Issued to:** A remote entity daemon  
+**Authority:** Daemon-to-daemon connectivity for kingdoms state synchronization  
+**Revocable by:** Either party
+
+A kingdom-peer bond establishes a peer relationship between two daemon instances for the purpose of kingdoms state access and cache operations (VESTA-SPEC-031). This is a bilateral bond: both parties must issue one to the other before the peer connection is established.
+
+**Required additional fields:**
+
+```yaml
+---
+type: kingdom-peer
+from: koad
+to: juno
+scope: public | shared | all   # what namespaces the peer may access
+rate_limit: 100/hour           # max authenticated pull requests per hour
+refresh: true | false          # whether peer may trigger upstream cache refreshes
+daemon_endpoint: kingdoms.koad.sh:4200   # peer connection endpoint
+created: 2026-04-05
+---
+```
+
+- `scope` — `public` (public namespaces only), `shared` (public + bilateral shared), or `all` (full access per filesystem-access bonds)
+- `rate_limit` — requests per unit time; enforced by daemon
+- `refresh` — whether this peer can trigger upstream git/GitHub fetches (costs bandwidth/API quota)
+- `daemon_endpoint` — where the granting daemon is reachable
+
+**Key attributes:**
+- Bilateral: peer connection requires bonds from BOTH parties
+- Scope ceiling: even if `scope: all`, specific path access still requires a filesystem-access bond
+- Revoking either party's bond tears down the peer connection
+- No downstream authority; cannot be sub-delegated
+
+---
+
 ## 11. Examples
 
 ### Example 1: koad → Juno (authorized-agent)
@@ -657,6 +767,9 @@ Tools should use standard GPG or Keybase libraries to verify these.
 - **VESTA-SPEC-002** — Gestation Protocol (when initial bonds are created)
 - **VESTA-SPEC-008** — Inter-Entity Communications Protocol (uses trust bonds for authentication)
 - **VESTA-SPEC-024** — Public Key Distribution (where signer keys are stored and verified)
+- **VESTA-SPEC-029** — Kingdoms Filesystem (`filesystem-access` bond; FUSE auth layer)
+- **VESTA-SPEC-030** — Community Namespaces (`community-member` bond; DAO governance)
+- **VESTA-SPEC-031** — Kingdoms State Layer (`kingdom-peer` bond; daemon peer connectivity)
 
 ---
 
