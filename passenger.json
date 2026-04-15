@@ -4,8 +4,27 @@
   "role": "architect",
   "avatar": "avatar.png",
   "buttons": [
-    { "label": "Specs", "action": "specs", "description": "View active specs" },
-    { "label": "Gap", "action": "gap", "description": "File a structural gap" },
-    { "label": "Reconcile", "action": "reconcile", "description": "Reconcile spec vs reality" }
-  ]
+    {
+      "label": "Specs",
+      "action": "specs",
+      "description": "View active specs"
+    },
+    {
+      "label": "Gap",
+      "action": "gap",
+      "description": "File a structural gap"
+    },
+    {
+      "label": "Reconcile",
+      "action": "reconcile",
+      "description": "Reconcile spec vs reality"
+    }
+  ],
+  "outfit": {
+    "h": 17,
+    "s": 85,
+    "visual": {
+      "avatar": "avatar.png"
+    }
+  }
 }
