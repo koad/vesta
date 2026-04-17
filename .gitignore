@@ -1,23 +1,39 @@
-# Private keys — never commit
-id/ed25519
-id/ecdsa
-id/rsa
-id/dsa
-
-# SSL private keys
-ssl/master-curve.pem
-ssl/device-curve.pem
-ssl/relay-curve.pem
-ssl/session.pem
-
-# Runtime
-proc/
-var/
-home/vesta/.cache/
-
-# macOS
+# Runtime artifacts (regenerate on their own)
+.local/
+node_modules/
 .DS_Store
-
-# Editor
-.vscode/
+Thumbs.db
 *.swp
+*.swo
+*~
+.tmp/
+dist/
+
+# Entity GPG keyring — private keys, never commit
+keyring/
+
+# Credentials — OAuth tokens, API keys, secrets. Never commit.
+.credentials
+.credentials.json
+.credentials.*
+
+# Claude Code session artifacts — host-specific, not portable
+.claude.json.backup.*
+backups/.claude.json*
+projects/-home-koad--*/
+cache/
+plugins/
+sessions/
+.context
+backups/
+
+# Flight plans — ephemeral dispatch artifacts (durable record is commit trailer)
+flight-plans/
+
+# Claude Code harness artifacts (regenerated per session)
+.claude.json
+.claude/
+mcp-needs-auth-cache.json
+
+# Runtime state
+var/

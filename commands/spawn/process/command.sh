@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: 0BSD
 
 # Vesta Spawn Process Command
 # Spawns a team entity in its own gnome-terminal with Claude Code

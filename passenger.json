@@ -26,5 +26,9 @@
     "visual": {
       "avatar": "avatar.png"
     }
+  },
+  "dispatch": {
+    "color": "blue",
+    "model": "sonnet"
   }
 }

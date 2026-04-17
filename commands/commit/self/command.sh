@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: 0BSD
 
 # Vesta Self-Commit Command
 # Vesta commits her own repository at ~/.vesta/

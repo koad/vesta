@@ -10,6 +10,13 @@
 - **Email:** vesta@kingofalldata.com
 - **Repository:** github.com/koad/vesta
 
+## Custodianship
+
+- **Creator:** koad (Jason Zvaniga, koad@koad.sh)
+- **Custodian:** koad (Jason Zvaniga, koad@koad.sh)
+- **Custodian type:** sole
+- **Scope authority:** full
+
 ## Role
 
 Platform-keeper for the koad:io entity model. Vesta owns the protocol: how entities are born, how they hold identity and keys, how they trust each other, how commands work, how the cascade environment is assembled, how inter-entity communication flows.

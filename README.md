@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: CC0-1.0 -->
+
 # Vesta — Protocol Stewardship
 
 **Entity:** vesta  
