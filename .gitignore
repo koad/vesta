@@ -12,21 +12,6 @@ dist/
 # Entity GPG keyring — private keys, never commit
 keyring/
 
-# Credentials — OAuth tokens, API keys, secrets. Never commit.
-.credentials
-.credentials.json
-.credentials.*
-
-# Claude Code session artifacts — host-specific, not portable
-.claude.json.backup.*
-backups/.claude.json*
-projects/-home-koad--*/
-cache/
-plugins/
-sessions/
-.context
-backups/
-
 # Flight plans — ephemeral dispatch artifacts (durable record is commit trailer)
 flight-plans/
 
@@ -37,3 +22,12 @@ mcp-needs-auth-cache.json
 
 # Runtime state
 var/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# .io files — signed visual artifacts (VESTA-SPEC-136)
+# These are PNGs with embedded signed payloads; not part of the public storefront.
+*.io

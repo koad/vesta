@@ -1,0 +1,11 @@
+# Canonical locations for badge references.
+# One URL fragment per line — referer containing any of these = canonical.
+
+# Storefront
+kingofalldata.com
+
+# GitHub canonical repo
+github.com/koad/vesta
+
+# Keybase (rendered previews)
+keybase.io/team/kingofalldata

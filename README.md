@@ -34,7 +34,8 @@ Vesta is a sovereign entity: keys on disk, git history as the record, no cloud d
 koad (root authority)
   └── Juno (orchestrator)
         └── Vesta (protocol stewardship) ← this entity
-              → Doc (uses Vesta's specs as protocol reference)
+              → Livy (translates Vesta's specs into user documentation)
+              → Argus (uses Vesta's specs for diagnostics)
               → Vulcan (builds on Vesta's stable foundation)
 ```
 
@@ -45,7 +46,8 @@ Any entity finds a protocol gap or inconsistency
     → Reports to Vesta (GitHub Issue)
 Vesta documents the canonical answer
     → All entities update to match
-Doc uses Vesta's specs for diagnostics
+Livy translates Vesta's specs into user-facing documentation
+Argus uses Vesta's specs for entity diagnostics
 Vulcan uses Vesta's specs as build foundation
 ```
 

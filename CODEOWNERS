@@ -1,0 +1,6 @@
+# CODEOWNERS — Vesta (github.com/koad/vesta)
+#
+# Every file in this repo requires review from @koad before merging.
+# This is a sovereign entity repo; there is no committee.
+
+* @koad

@@ -6,11 +6,12 @@ Vesta is the platform keeper and protocol specification officer for the koad:io 
 
 ## Current State
 
-**Gestated and on GitHub.** 45 specifications authored.
+**Active. 174 specifications authored.**
 
 ### Spec Library (`specs/`)
 
-Major specs include:
+Major protocol areas covered:
+
 - Entity model, gestation, identity, public keys
 - Cascade environment, commands system, daemon
 - Trust bonds, authorization
@@ -20,8 +21,19 @@ Major specs include:
 - Entity containment / abort protocol
 - Signed code blocks protocol
 - Inter-entity comms (VESTA-SPEC-011)
+- Entity tool cascade (VESTA-SPEC-137)
+- Kingdom Tool Substrate / MCP service (VESTA-SPEC-139)
+- Sovereign auth for MCP (VESTA-SPEC-140, canonical)
+- Pluggable indexer pattern (VESTA-SPEC-141, draft)
+- Permission Decrees — publication gating (VESTA-SPEC-144, canonical)
+- Witness primitive — can.get.witness (VESTA-SPEC-151, canonical, v1.1 — mesh model)
+- Namespace claim flow — /me sandbox to insider (VESTA-SPEC-152, canonical)
+- Monitor loop — post-claim active witness + repo watching (VESTA-SPEC-153, canonical)
+- Channel primitive — multi-entity conversation rooms (VESTA-SPEC-154, canonical, v2.0 — cue model; Juno-moderated; long-lived stream-json join; floor protocol retired)
+- Operator identity layer — ~/.koad-io/me/, IDENTITY.md, init sovereign command, scanner rules (VESTA-SPEC-174, canonical, v1.0)
+- Framework-vs-business separation (canonical rule, SPEC forthcoming)
 
-Full list: `ls specs/` — 45 specs as of 2026-04-05.
+Full list: `ls specs/`
 
 ### Active Projects (`projects/`)
 
@@ -32,19 +44,19 @@ Full list: `ls specs/` — 45 specs as of 2026-04-05.
 
 ---
 
-## Active Work
+## How to Reach Vesta
 
-- Harness personality divergence reconciliation (koad/vesta#8) — Vesta to spec unified identity behavior across harnesses
-- Signed code blocks: powerbox verification protocol
-- Curriculum bubble spec (VESTA-SPEC-025) — delivered, Alice onboarding live
+**Internal (entities, Juno):** File a brief to `~/.vesta/briefs/` or send an MCP emission.
 
-Work arrives as GitHub Issues on `koad/vesta`.
+**Public (users, sponsors):** File a GitHub Issue on `koad/vesta`.
+
+GitHub issues are the public-facing channel as of 2026-04-17. Internal protocol coordination moves through briefs and MCP emissions.
 
 ---
 
 ## Blocked
 
-None critical. Harness unification work (koad/vesta#8) is ongoing.
+None critical.
 
 ---
 
@@ -52,10 +64,9 @@ None critical. Harness unification work (koad/vesta#8) is ongoing.
 
 | File | Purpose |
 |------|---------|
-| `README.md` | Entity overview and what Vesta owns |
-| `CLAUDE.md` | Full identity, scope, what Vesta does vs. doesn't own |
-| `specs/` | 45 protocol specifications |
+| `ENTITY.md` | Full identity, role, and protocol authority |
+| `specs/` | 140+ protocol specifications |
+| `REGISTRY.md` | SPEC number registry |
 | `projects/` | Active specification projects |
-| `LOGS/` | Session logs |
-| `memories/001-identity.md` | Core identity context |
-| `reference-implementations/` | Reference implementations for specs |
+| `memories/` | Long-term entity memory |
+| `trust/bonds/` | Trust bond documents |
