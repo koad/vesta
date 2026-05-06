@@ -6,7 +6,7 @@ Vesta is the platform keeper and protocol specification officer for the koad:io 
 
 ## Current State
 
-**Active. 174 specifications authored.**
+**Active. 175 specifications authored.**
 
 ### Spec Library (`specs/`)
 
@@ -31,6 +31,7 @@ Major protocol areas covered:
 - Monitor loop — post-claim active witness + repo watching (VESTA-SPEC-153, canonical)
 - Channel primitive — multi-entity conversation rooms (VESTA-SPEC-154, canonical, v2.0 — cue model; Juno-moderated; long-lived stream-json join; floor protocol retired)
 - Operator identity layer — ~/.koad-io/me/, IDENTITY.md, init sovereign command, scanner rules (VESTA-SPEC-174, canonical, v1.0)
+- Entity multi-device shape — sovereign-signed entity leaves, entity.public.asc + devices/<host>/, koad.entity.* sigchain family, migration playbook (VESTA-SPEC-175, canonical, v1.0)
 - Framework-vs-business separation (canonical rule, SPEC forthcoming)
 
 Full list: `ls specs/`
